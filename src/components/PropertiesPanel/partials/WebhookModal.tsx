@@ -44,7 +44,7 @@ export default function WebhookModal({
   };
 
   const handleInsertVariable = (name: string) => {
-    setUrl(prev => `${prev}{{${name}}}`);
+    setUrl((prev: string) => `${prev}{{${name}}}`);
   }
 
   if (!isOpen) return null;
