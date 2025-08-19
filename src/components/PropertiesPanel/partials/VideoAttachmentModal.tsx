@@ -38,10 +38,6 @@ export default function VideoAttachmentModal({
     }
   }, [media, isOpen]);
 
-  useEffect(() => {
-    setIsError(false);
-  }, [url]);
-
   const handleSave = () => {
     if (!url) return;
     onSave({ type: 'video', url });
@@ -51,6 +47,14 @@ export default function VideoAttachmentModal({
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
+  
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    // Reset error state when user starts typing a new URL
+    if (isError) {
+        setIsError(false);
+    }
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -105,7 +109,7 @@ export default function VideoAttachmentModal({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="video-url">Video URL</Label>
-            <Input id="video-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/video.mp4" />
+            <Input id="video-url" value={url} onChange={handleUrlChange} placeholder="https://example.com/video.mp4" />
           </div>
           <div className="text-center text-sm text-muted-foreground">or</div>
           <input

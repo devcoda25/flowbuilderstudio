@@ -38,10 +38,6 @@ export default function AudioAttachmentModal({
     }
   }, [media, isOpen]);
 
-  useEffect(() => {
-    setIsError(false);
-  }, [url]);
-
   const handleSave = () => {
     if (!url) return;
     onSave({ type: 'audio', url });
@@ -51,6 +47,13 @@ export default function AudioAttachmentModal({
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
+  
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    if (isError) {
+        setIsError(false);
+    }
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -92,6 +95,7 @@ export default function AudioAttachmentModal({
           <div className="flex items-center justify-center h-48 bg-muted rounded-md overflow-hidden p-4">
             {url && !isError ? 
               <audio 
+                key={url}
                 src={url} 
                 controls 
                 className="w-full"
@@ -104,7 +108,7 @@ export default function AudioAttachmentModal({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="audio-url">Audio URL</Label>
-            <Input id="audio-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/audio.mp3" />
+            <Input id="audio-url" value={url} onChange={handleUrlChange} placeholder="https://example.com/audio.mp3" />
           </div>
           <div className="text-center text-sm text-muted-foreground">or</div>
           <input
