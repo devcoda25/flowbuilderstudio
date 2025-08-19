@@ -41,7 +41,7 @@ type ModalState = {
 type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio' | 'document' };
 
 function StudioPageContent() {
-  const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnectStart, onConnectEnd, onConnect, updateNodeData } = useFlowStore();
+  const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd } = useFlowStore();
   const { meta, setTitle, setChannels, setPublished, setWaContext } = useFlowMetaStore();
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);

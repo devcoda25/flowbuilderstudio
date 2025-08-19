@@ -33,9 +33,12 @@ type RFState = {
     nodes: Node[];
     edges: Edge[];
     startNodeId: string | null;
+    connectingNodeId: OnConnectStartParams | null;
     onNodesChange: (changes: NodeChange[]) => void;
     onEdgesChange: (changes: EdgeChange[]) => void;
     onConnect: (connection: Connection) => void;
+    onConnectStart: (_: any, params: OnConnectStartParams) => void;
+    onConnectEnd: () => void;
     addNode: (node: Node) => void;
     deleteNode: (nodeId: string) => void;
     duplicateNode: (nodeId: string) => void;
@@ -50,6 +53,7 @@ const flowSlice = (set: any, get: any) => ({
   nodes: [] as Node[],
   edges: [] as Edge[],
   startNodeId: null as string | null,
+  connectingNodeId: null as OnConnectStartParams | null,
 
   onNodesChange: (changes: NodeChange[]) => {
     set({
@@ -80,6 +84,12 @@ const flowSlice = (set: any, get: any) => ({
     set({
       edges: addEdge({ ...connection, type: 'bezier', markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 } }, get().edges),
     });
+  },
+  onConnectStart: (_: any, params: OnConnectStartParams) => {
+    set({ connectingNodeId: params });
+  },
+  onConnectEnd: () => {
+    set({ connectingNodeId: null });
   },
   addNode: (node: Node) => {
     set({

@@ -114,19 +114,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     if (!thisNode) return;
     const partType = type || parts.find(p => p.id === partId)?.type;
     
-    if (isMessageNode) {
+    if (isMessageNode && data.onNodeDoubleClick) {
         if (partType) {
-            switch(partType) {
-                case 'text':
-                    // Inline editing, no modal needed
-                    return;
-                case 'image':
-                case 'video':
-                case 'audio':
-                case 'document':
-                    data.onOpenAttachmentModal?.(id, partId!, partType);
-                    break;
-            }
+            data.onNodeDoubleClick(thisNode, { partId: partId, type: partType });
         }
     } else {
         data.onNodeDoubleClick?.(thisNode);

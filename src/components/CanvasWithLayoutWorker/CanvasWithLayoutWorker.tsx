@@ -49,10 +49,12 @@ export type CanvasWithLayoutWorkerProps = {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  onConnectStart: (event: React.MouseEvent | React.TouchEvent, params: OnConnectStartParams) => void,
+  onConnectEnd: (event: MouseEvent | TouchEvent) => void,
   setNodes: (nodes: Node[]) => void;
-  onNodeDoubleClick?: (node: Node) => void;
+  onNodeDoubleClick?: (node: Node, options?: { partId?: string, type?: string }) => void;
   onOpenProperties?: (node: Node | null) => void;
-  onOpenAttachmentModal?: (nodeId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
+  onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
   viewportKey?: string;
 };
 
@@ -71,6 +73,8 @@ function InnerCanvas({
   onNodesChange,
   onEdgesChange,
   onConnect,
+  onConnectStart,
+  onConnectEnd,
   onNodeDoubleClick,
   onOpenProperties,
   onOpenAttachmentModal
@@ -138,14 +142,19 @@ function InnerCanvas({
   );
   
   const handleNodeDoubleClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    onNodeDoubleClick?.(node);
+      if (node.data.onNodeDoubleClick) {
+        node.data.onNodeDoubleClick(node)
+      } else {
+        onNodeDoubleClick?.(node);
+      }
   }, [onNodeDoubleClick]);
 
-  const onConnectStart = useCallback((_: any, params: OnConnectStartParams) => {
+  const handleConnectStart = useCallback((_: any, params: OnConnectStartParams) => {
     setConnectingNodeId(params);
-  }, []);
+    onConnectStart(_, params);
+  }, [onConnectStart]);
 
-  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+  const handleConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
     const targetIsPane = (event.target as HTMLElement).classList.contains('react-flow__pane');
 
     if (targetIsPane && connectingNodeId) {
@@ -164,7 +173,8 @@ function InnerCanvas({
         })
     }
     setConnectingNodeId(null);
-  }, [project, connectingNodeId]);
+    onConnectEnd(event);
+  }, [project, connectingNodeId, onConnectEnd]);
 
   useClickAway(selectorRef, () => {
     setNodeSelector(null);
@@ -220,8 +230,8 @@ function InnerCanvas({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
+          onConnectStart={handleConnectStart}
+          onConnectEnd={handleConnectEnd}
           onInit={(inst) => (rfRef.current = inst)}
           onSelectionChange={onSelectionChange}
           onNodeDoubleClick={handleNodeDoubleClick}
