@@ -2,7 +2,7 @@
 export function renderTemplate(tpl: string, vars: Record<string, any>) {
   return tpl.replace(/{{\s*([\w.]+)\s*}}/g, (_, key) => {
     try {
-        const val = key.split('.').reduce((o, k) => (o ? o[k] : undefined), vars as any);
+        const val = key.split('.').reduce((o: any, k: string) => (o ? o[k] : undefined), vars);
         return val == null ? '' : String(val);
     } catch {
         return '';
