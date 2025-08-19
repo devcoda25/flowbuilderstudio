@@ -42,7 +42,7 @@ export async function layoutElkRadial(
   }
   const res = await elk.layout(graph as any)
   const out: Record<string, { x: number; y: number }> = {}
-  for (const c of res.children ?? []) out[c.id] = { x: c.x, y: c.y }
+  for (const c of res.children ?? []) out[c.id] = { x: c.x ?? 0, y: c.y ?? 0 }
   return out
 }
 
