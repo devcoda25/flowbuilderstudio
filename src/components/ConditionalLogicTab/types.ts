@@ -1,3 +1,5 @@
+import type { VariableSpec } from "@/components/ExpressionBuilder";
+
 export type DelayUnit = 's' | 'm' | 'h' | 'd'
 
 export type Branch = {
@@ -21,7 +23,7 @@ export type ConditionalLogicTabProps = {
   /** Return the updated form object (we’ll hand you back everything) */
   onChange: (next: Record<string, any>) => void
   /** Variables to expose in the ExpressionBuilder & simulator */
-  variables?: { name: string; label?: string; type?: string }[]
+  variables?: VariableSpec[]
   /** Optional list of destinations to show in a "Route to" dropdown */
   branchTargets?: { id: string; label: string }[]
   /** Seed JSON for the simulator */
