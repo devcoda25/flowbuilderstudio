@@ -1,3 +1,4 @@
+
 import React from 'react'
 import { useFieldArray, useFormContext } from 'react-hook-form'
 import styles from '../properties-panel.module.css'
@@ -62,8 +63,8 @@ export default function MessageTab({ waContext = 'template', channels }: { waCon
                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(i)} aria-label="Remove">
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    {errors.quickReplies?.[i]?.label && (
-                      <span className={styles.err}>{String(errors.quickReplies?.[i]?.label?.message)}</span>
+                    {Array.isArray(errors.quickReplies) && errors.quickReplies[i]?.label && (
+                      <span className={styles.err}>{String(errors.quickReplies[i]?.label?.message)}</span>
                     )}
                   </li>
                 ))}
