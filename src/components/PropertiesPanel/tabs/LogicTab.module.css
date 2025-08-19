@@ -1,0 +1,33 @@
+.conditionGroup {
+    background-color: hsl(var(--muted) / 0.5);
+}
+
+.conditionRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.orDivider {
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+    position: relative;
+    margin: 16px 0;
+}
+.orDivider::before, .orDivider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 30px);
+    height: 1px;
+    background-color: hsl(var(--border));
+}
+.orDivider::before {
+    left: 0;
+}
+.orDivider::after {
+    right: 0;
+}

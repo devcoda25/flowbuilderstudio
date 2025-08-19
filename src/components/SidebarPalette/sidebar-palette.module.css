@@ -1,0 +1,14 @@
+.paletteItem {
+    @apply flex flex-col items-center justify-center text-center gap-1 p-2 rounded-lg bg-card text-card-foreground border border-border cursor-grab select-none transition-all duration-200 hover:shadow-md hover:border-primary/20 active:cursor-grabbing active:scale-[0.98] shadow-sm;
+}
+
+.paletteItemIconWrapper {
+    @apply w-8 h-8 rounded-full grid place-items-center bg-primary/10 flex-shrink-0;
+}
+.paletteItemIcon {
+    @apply w-4 h-4 text-primary;
+}
+
+.paletteItemLabel {
+    @apply text-xs font-medium leading-snug;
+}

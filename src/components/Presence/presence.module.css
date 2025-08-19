@@ -1,0 +1,52 @@
+/* Cursors */
+.cursor {
+  position: absolute;
+  z-index: 100;
+  pointer-events: none;
+  transform: translate(-1px, -1px);
+  transition: transform 0.1s linear;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px white, 0 0 4px 2px rgba(0,0,0,0.3);
+}
+.tag {
+  position: absolute; left: 12px; top: -2px;
+  font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.15);
+  white-space: nowrap; font-weight: 600;
+}
+
+/* Avatars */
+.stack { 
+  position: absolute; 
+  top: -12px; 
+  right: -12px; 
+  display: flex;
+  padding-left: 8px; /* space for the last avatar */
+}
+.av { 
+  width: 24px; 
+  height: 24px; 
+  border-radius: 999px; 
+  border: 2px solid white; 
+  box-shadow: 0 1px 2px rgba(0,0,0,.2); 
+  display: grid; 
+  place-items: center; 
+  color: white; 
+  font-size: 10px; 
+  font-weight: 800; 
+  margin-left: -8px;
+  overflow: hidden;
+}
+.more { background: #374151; }
+
+/* Publish banner */
+.banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: hsl(var(--bg-panel)); color: hsl(var(--text));
+  border-bottom: 1px solid hsl(var(--border-muted));
+  text-align: center; padding: 6px 8px; font-weight: 600;
+  font-size: 14px;
+}

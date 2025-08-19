@@ -1,0 +1,130 @@
+.root {
+  display: grid;
+  grid-template-columns: 1.1fr 1.6fr;
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .root { grid-template-columns: 1fr; }
+}
+
+.left, .right { display: grid; align-content: start; gap: 10px; }
+
+.leftHeader {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.title { margin: 0; font-size: 14px; font-weight: 700; color: hsl(var(--foreground)); }
+.headerActions { display: inline-flex; gap: 6px; }
+
+.btn {
+  height: 30px; padding: 0 10px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px; cursor: pointer;
+}
+
+.mini {
+  height: 26px; padding: 0 8px; font-size: 12px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px; cursor: pointer;
+}
+
+.removeBtn {
+  width: 28px;
+  display: grid; place-items: center;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px; cursor: pointer;
+}
+
+.select {
+  height: 30px; padding: 0 10px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px; cursor: pointer;
+}
+
+.list { display: grid; gap: 6px; }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 8px 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card)); color: hsl(var(--card-foreground));
+  cursor: pointer;
+}
+.row:hover { background: hsl(var(--muted)); }
+.rowActive { outline: 2px solid hsl(var(--ring)); }
+.rowDisabled { opacity: 0.6; }
+
+.rowLeft { display: grid; gap: 4px; }
+.rowTitle { display: inline-flex; align-items: center; gap: 8px; }
+.badge {
+  padding: 2px 8px; border-radius: 999px; font-size: 11px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground));
+}
+.rowLabel { font-weight: 600; }
+.rowMeta { display: inline-flex; flex-wrap: wrap; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.metaItem { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+
+.rowActions { display: inline-flex; gap: 6px; }
+
+/* Right column */
+.card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px; background: hsl(var(--background));
+  padding: 10px; display: grid; gap: 8px;
+}
+.row .inline, .inline { display: inline-grid; grid-auto-flow: column; gap: 6px; align-items: center; }
+.field { display: grid; gap: 4px; min-width: 140px; }
+.label { font-size: 12px; color: hsl(var(--muted-foreground)); }
+.input, .select {
+  width: 100%; color: hsl(var(--foreground));
+  background: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 8px;
+  padding: 6px 10px;
+}
+.row .input { min-width: 160px; }
+
+.row { /* keep previous row styling */ }
+
+.row .field { margin-right: 8px; }
+
+.row .select { min-width: 84px; }
+
+.subhead { margin: 4px 0; font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); }
+.muted { color: hsl(var(--muted-foreground)); font-size: 12px; }
+
+.footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 2px;
+}
+.ok { color: hsl(var(--success)); font-size: 12px; }
+
+.problems { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.problemItem { color: hsl(var(--destructive)); font-size: 12px; }
+
+/* Simulator */
+.simRoot { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.simJson {
+  width: 100%; min-height: 120px;
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border)); border-radius: 8px;
+  padding: 8px 10px; font-family: ui-monospace, monospace; font-size: 12px;
+}
+.simActions { display: grid; gap: 8px; align-content: start; }
+.simResult {
+  padding: 6px 8px; border: 1px dashed hsl(var(--border)); border-radius: 8px;
+  background: hsl(var(--muted)); color: hsl(var(--foreground)); min-height: 34px;
+}
+
+/* responsive */
+@media (max-width: 720px) {
+  .simRoot { grid-template-columns: 1fr; }
+}

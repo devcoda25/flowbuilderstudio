@@ -1,0 +1,4 @@
+.root { display: grid; gap: 6px; }
+.label { font-size: 12px; color: hsl(var(--muted-foreground)); margin-bottom: 4px; }
+.rows { display: grid; gap: 6px; }
+.row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
