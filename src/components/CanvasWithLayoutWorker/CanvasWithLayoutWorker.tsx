@@ -224,7 +224,6 @@ function InnerCanvas({
     <div ref={canvasRef} className={styles.root}>
       <div className={styles.canvas} onDrop={onDrop} onDragOver={onDragOver}>
         <ReactFlow
-          ref={(instance) => (rfRef.current = instance)}
           nodes={nodesWithProps}
           edges={edges}
           onNodesChange={onNodesChange}
