@@ -1,11 +1,12 @@
 import React from 'react'
 import { useFormContext } from 'react-hook-form'
 import ConditionalLogicTab from '@/components/ConditionalLogicTab'
+import type { VariableSpec } from '@/components/ExpressionBuilder'
 
 export default function LogicTab() {
   const { getValues, reset } = useFormContext()
 
-  const variables = [
+  const variables: VariableSpec[] = [
     { name: 'country', label: 'Country Code', type: 'string' },
     { name: 'age', label: 'User Age', type: 'number' },
     { name: 'message', label: 'Last Message', type: 'string' },
