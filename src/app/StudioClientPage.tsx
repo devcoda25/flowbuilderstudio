@@ -187,6 +187,8 @@ function StudioPageContent() {
         color: item.color || getRandomColor(),
         description: item.description,
         type: item.type,
+        content: item.content,
+        quickReplies: item.quickReplies,
       },
     };
     addNode(newNode);

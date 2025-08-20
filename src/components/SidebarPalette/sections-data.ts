@@ -3,6 +3,7 @@
 // - Optional `channels` can restrict visibility by channel (if you pass filterChannels).
 import type { LucideIcon } from 'lucide-react';
 import { NODE_COLORS } from '@/lib/color-utils';
+import { nanoid } from 'nanoid';
 
 export type NodeCategory =
   | 'triggers'
@@ -24,6 +25,8 @@ export type PaletteItemPayload = {
   type: NodeCategory
   color?: string
   description?: string
+  content?: string
+  quickReplies?: { id: string; label: string }[];
 }
 
 export type ItemDefinition = PaletteItemPayload & {
@@ -52,8 +55,8 @@ export const SECTION_DATA: SectionDefinition[] = [
       items: [
           { key: 'message', label: 'Send a Message', icon: 'Send', type: 'messaging', color: NODE_COLORS[1], description: 'Send text, media, or interactive messages' },
           { key: 'askQuestion', label: 'Ask a Question', icon: 'HelpCircle', type: 'inputs', color: NODE_COLORS[2], description: 'Ask an open-ended question and wait for a reply' },
-          { key: 'buttons', label: 'Buttons', icon: 'MessageSquarePlus', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with up to 10 buttons' },
-          { key: 'list', label: 'List', icon: 'List', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with a list of up to 10 choices' },
+          { key: 'buttons', label: 'Buttons', icon: 'MessageSquarePlus', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with up to 10 buttons', content: 'Ask a question', quickReplies: [{ id: nanoid(), label: 'Button 1' }] },
+          { key: 'list', label: 'List', icon: 'List', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with a list of up to 10 choices', content: 'Ask a question', quickReplies: [{ id: nanoid(), label: 'Option 1' }] },
           { key: 'sendTemplate', label: 'Send a Template', icon: 'Mailbox', type: 'messaging', color: NODE_COLORS[1], description: 'Send a pre-approved template message', channels: ['whatsapp'] },
       ]
     },

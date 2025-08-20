@@ -89,9 +89,6 @@ function InnerCanvas({
   const [nodeSelector, setNodeSelector] = useState<NodeSelectorState | null>(null);
   const selectorRef = useRef<HTMLDivElement>(null);
 
-  useClickAway(selectorRef, () => {
-    setNodeSelector(null);
-  });
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -126,6 +123,8 @@ function InnerCanvas({
             description: item.description,
             type: item.type,
             onOpenProperties: onOpenProperties,
+            content: item.content,
+            quickReplies: item.quickReplies,
         },
       };
 
@@ -202,6 +201,8 @@ function InnerCanvas({
             color: item.color || getRandomColor(),
             description: item.description,
             type: item.type,
+            content: item.content,
+            quickReplies: item.quickReplies,
         },
     };
     addNode(newNode);

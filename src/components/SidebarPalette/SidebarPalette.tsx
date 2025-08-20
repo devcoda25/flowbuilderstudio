@@ -31,7 +31,16 @@ export default function SidebarPalette({
 
 
   function toPayload(it: ItemDefinition): PaletteItemPayload {
-    return { key: it.key, label: it.label, icon: it.icon as string, type: it.type, color: it.color, description: it.description };
+    return { 
+        key: it.key, 
+        label: it.label, 
+        icon: it.icon as string, 
+        type: it.type, 
+        color: it.color, 
+        description: it.description,
+        content: it.content,
+        quickReplies: it.quickReplies,
+    };
   }
 
 
