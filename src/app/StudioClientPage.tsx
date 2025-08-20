@@ -17,6 +17,7 @@ import PublishBanner from '@/components/Presence/PublishBanner';
 import { FlowEngine } from '@/engine/FlowEngine';
 import { useHistoryStore } from '@/store/history';
 import { getRandomColor } from '@/lib/color-utils';
+import { downloadJson } from '@/components/TestConsole/utils/download';
 
 import MessageContentModal from '@/components/PropertiesPanel/partials/MessageContentModal';
 import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
@@ -42,7 +43,7 @@ type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio'
 
 function StudioPageContent() {
   const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd } = useFlowStore();
-  const { meta, setTitle, setChannels, setPublished, setWaContext } = useFlowMetaStore();
+  const { meta, setTitle, setChannels, setWaContext } = useFlowMetaStore();
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
@@ -171,6 +172,16 @@ function StudioPageContent() {
     addNode(newNode);
   };
   
+  const handleSaveFlow = useCallback(() => {
+    const flowData = {
+        meta: meta,
+        nodes: nodes,
+        edges: edges
+    };
+    const fileName = `${meta.title.replace(/\s+/g, '_').toLowerCase()}_flow.json`;
+    downloadJson(flowData, fileName);
+  }, [meta, nodes, edges]);
+  
   const activePart = useMemo(() => {
     if (!modalState?.nodeId || !modalState?.partId) return undefined;
     const node = nodes.find(n => n.id === modalState.nodeId);
@@ -193,7 +204,7 @@ function StudioPageContent() {
             canUndo={canUndo}
             canRedo={canRedo}
             onTest={toggleTestConsole}
-            onSaveClick={() => console.log('Save clicked!', { meta, nodes, edges })}
+            onSaveClick={handleSaveFlow}
         />
       </div>
       <aside className="hidden md:block col-start-1 row-start-2 overflow-y-auto border-r border-border z-10 bg-background">

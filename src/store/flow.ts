@@ -1,4 +1,5 @@
 
+
 import { create } from 'zustand';
 import type { Node, Edge, NodeChange, EdgeChange, Connection, OnConnectStartParams } from 'reactflow';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from 'reactflow';
@@ -169,7 +170,6 @@ interface FlowMetaState {
     meta: FlowMeta;
     setTitle: (title: string) => void;
     setChannels: (channels: Channel[]) => void;
-    setPublished: (published: boolean) => void;
     setWaContext: (ctx: MessageContext) => void;
 }
 
@@ -183,7 +183,6 @@ export const useFlowMetaStore = create<FlowMetaState>((set) => ({
     },
     setTitle: (title) => set((s) => ({ meta: { ...s.meta, title: title.trim() || 'Untitled Flow' } })),
     setChannels: (channels) => set((s) => ({ meta: { ...s.meta, channels } })),
-    setPublished: (published) => set((s) => ({ meta: { ...s.meta, published } })),
     setWaContext: (waMessageContext) => set((s) => ({ meta: { ...s.meta, waMessageContext } })),
 }));
 
