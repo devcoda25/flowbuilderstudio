@@ -3,8 +3,6 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
-  ReactFlowProvider,
-  addEdge,
   Connection,
   Controls,
   MiniMap,
@@ -14,11 +12,9 @@ import ReactFlow, {
   ConnectionMode,
   NodeChange,
   EdgeChange,
-  Panel,
   BackgroundVariant,
   Background,
   ConnectionLineType,
-  MarkerType,
   OnConnectStartParams,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -33,7 +29,6 @@ import { useFlowStore } from '@/store/flow';
 import type { PaletteItemPayload } from '../SidebarPalette';
 import { getRandomColor } from '@/lib/color-utils';
 import NodeSelector from './NodeSelector';
-import { useClickAway } from 'react-use';
 
 const GRID_SIZE = 20;
 
@@ -66,7 +61,7 @@ type NodeSelectorState = {
 } | null;
 
 
-function InnerCanvas({
+export default function CanvasWithLayoutWorker({
   nodes,
   edges,
   setNodes,
@@ -87,7 +82,6 @@ function InnerCanvas({
   
   const [connectingNodeId, setConnectingNodeId] = useState<OnConnectStartParams | null>(null);
   const [nodeSelector, setNodeSelector] = useState<NodeSelectorState | null>(null);
-  const selectorRef = useRef<HTMLDivElement>(null);
 
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -259,7 +253,6 @@ function InnerCanvas({
         </ReactFlow>
         {nodeSelector && (
             <div
-                ref={selectorRef}
                 style={{ position: 'absolute', left: nodeSelector.x + 10, top: nodeSelector.y, zIndex: 1000 }}
             >
                 <NodeSelector onSelect={handleSelectNode} onClose={() => setNodeSelector(null)} />
@@ -267,13 +260,5 @@ function InnerCanvas({
         )}
       </div>
     </div>
-  );
-}
-
-export default function CanvasWithLayoutWorker(props: CanvasWithLayoutWorkerProps) {
-  return (
-    <ReactFlowProvider>
-      <InnerCanvas {...props} />
-    </ReactFlowProvider>
   );
 }

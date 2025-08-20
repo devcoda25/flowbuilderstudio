@@ -51,7 +51,7 @@ function StudioPageContent() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
-  const { saveFlow, createNewFlow, deleteFlow, flows } = useFlowsStore();
+  const { saveFlow, createNewFlow, deleteFlow, flows, setActiveFlow } = useFlowsStore();
   const { toast } = useToast();
 
   const { isTestConsoleOpen, toggleTestConsole } = useUIStore();
@@ -187,6 +187,8 @@ function StudioPageContent() {
         color: item.color || getRandomColor(),
         description: item.description,
         type: item.type,
+        content: item.content,
+        quickReplies: item.quickReplies,
       },
     };
     addNode(newNode);

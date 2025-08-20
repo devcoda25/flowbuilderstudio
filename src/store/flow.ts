@@ -122,10 +122,11 @@ const flowSlice = (set: any, get: any) => ({
 
     const newId = nanoid();
     const isButtonItem = nodeToDuplicate.data.label === 'Buttons' || nodeToDuplicate.data.label === 'List';
-
-    const newQuickReplies = isButtonItem ? 
-      (nodeToDuplicate.data.quickReplies || []).map((qr: any) => ({ ...qr, id: nanoid() }))
-      : nodeToDuplicate.data.quickReplies;
+    
+    let newQuickReplies = nodeToDuplicate.data.quickReplies;
+    if (isButtonItem && Array.isArray(nodeToDuplicate.data.quickReplies)) {
+        newQuickReplies = nodeToDuplicate.data.quickReplies.map((qr: any) => ({ ...qr, id: nanoid() }));
+    }
 
     const newNode = {
       ...nodeToDuplicate,
