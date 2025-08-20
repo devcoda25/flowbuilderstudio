@@ -127,10 +127,8 @@ function StudioPageContent() {
   };
   
   const onSaveModal = (data: any) => {
-    if (!modalState) return;
-    if (modalState.nodeId) {
-      updateNodeData(modalState.nodeId, data);
-    }
+    if (!modalState || !modalState.nodeId) return;
+    updateNodeData(modalState.nodeId, data);
     setModalState(null);
   };
   

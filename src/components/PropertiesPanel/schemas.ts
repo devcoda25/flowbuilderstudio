@@ -48,8 +48,12 @@ export const apiSchema = z.object({
 
 // ---- Logic
 export const logicSchema = z.object({
-  expression: z.string().min(1, 'Expression required').max(2000),
-  defaultBranch: z.string().optional()
+  expression: z.string().optional(),
+  branches: z.array(z.object({
+    id: z.string(),
+    label: z.string().min(1, 'Branch label required'),
+    condition: z.string(),
+  })).optional(),
 })
 
 // ---- Schedule

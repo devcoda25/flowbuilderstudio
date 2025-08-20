@@ -4,7 +4,7 @@ import ConditionalLogicTab from '@/components/ConditionalLogicTab'
 import type { VariableSpec } from '@/components/ExpressionBuilder'
 
 export default function LogicTab() {
-  const { getValues, reset } = useFormContext()
+  const { getValues, resetField, setValue } = useFormContext()
 
   const variables: VariableSpec[] = [
     { name: 'country', label: 'Country Code', type: 'string' },
@@ -16,7 +16,9 @@ export default function LogicTab() {
   return (
       <ConditionalLogicTab
         value={getValues()}
-        onChange={(v) => reset(v, { keepDirty: true })}
+        onChange={(v) => {
+          setValue('branches', v.branches, { shouldDirty: true });
+        }}
         variables={variables}
         initialTestContext={{ country: 'US', age: 21, message: 'refund please' }} // optional
         branchTargets={[

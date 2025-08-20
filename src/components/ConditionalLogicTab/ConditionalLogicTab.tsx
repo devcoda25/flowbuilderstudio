@@ -63,17 +63,19 @@ export default function ConditionalLogicTab({
   // ----- actions -----
   function addBranch(kind: 'if' | 'else') {
     setBranches((prev) => {
-      const next = [...prev]
+      const next = [...prev];
       if (kind === 'else') {
         // ensure a single ELSE at the end
-        const hasElse = next.some(b => b.isElse)
-        if (!hasElse) next.push(DEFAULT_ELSE())
+        const hasElse = next.some(b => b.isElse);
+        if (!hasElse) {
+          next.push(DEFAULT_ELSE());
+        }
       } else {
-        const insertAt = Math.max(0, next.length - (next[next.length - 1]?.isElse ? 1 : 0))
-        next.splice(insertAt, 0, DEFAULT_BRANCH())
+        const insertAt = Math.max(0, next.length - (next[next.length - 1]?.isElse ? 1 : 0));
+        next.splice(insertAt, 0, DEFAULT_BRANCH());
       }
-      return next
-    })
+      return next;
+    });
   }
 
   function updateBranch(idx: number, patch: Partial<Branch>) {

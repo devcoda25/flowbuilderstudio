@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,14 @@ export default function ConditionModal({
   const methods = useForm<FormValues>({
     defaultValues: initialData || { groups: [{ type: 'and', conditions: [{ variable: '', operator: 'equals', value: '' }] }] }
   });
+  
+  const { control, handleSubmit } = methods;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "groups"
+  });
+
 
   useEffect(() => {
     if (isOpen) {
@@ -62,17 +71,17 @@ export default function ConditionModal({
           <DialogDescription>Define the logic to branch your flow. All conditions in a group must be true (AND). Create multiple groups for OR logic.</DialogDescription>
         </DialogHeader>
         <FormProvider {...methods}>
-            <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                {methods.watch('groups')?.map((_, groupIndex) => (
-                    <div key={groupIndex} className={`${panelStyles.field} p-4 rounded-lg ${styles.conditionGroup}`}>
-                        <ConditionGroupComponent groupIndex={groupIndex} removeGroup={(index) => methods.getValues('groups').length > 1 && methods.setValue('groups', methods.getValues('groups').filter((_, i) => i !== index))} />
-                         {methods.getValues('groups').length > 1 && 
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+                {fields.map((field, groupIndex) => (
+                    <div key={field.id} className={`${panelStyles.field} p-4 rounded-lg ${styles.conditionGroup}`}>
+                        <ConditionGroupComponent groupIndex={groupIndex} />
+                         {fields.length > 1 && 
                           <Button 
                             type="button" 
                             variant="destructive" 
                             size="sm" 
-                            onClick={() => methods.setValue('groups', methods.getValues('groups').filter((_, i) => i !== groupIndex))}
-                            className="self-start"
+                            onClick={() => remove(groupIndex)}
+                            className="self-start mt-2"
                           >
                             Remove OR Group
                           </Button>
@@ -80,7 +89,7 @@ export default function ConditionModal({
                     </div>
                 ))}
 
-                <Button type="button" variant="outline" onClick={() => methods.setValue('groups', [...methods.getValues('groups'), { type: 'and', conditions: [{ variable: '', operator: 'equals', value: '' }] }])}>
+                <Button type="button" variant="outline" onClick={() => append({ type: 'and', conditions: [{ variable: '', operator: 'equals', value: '' }] })}>
                     Add OR condition group
                 </Button>
 
@@ -95,23 +104,17 @@ export default function ConditionModal({
   );
 }
 
-function ConditionGroupComponent({ groupIndex, removeGroup }: { groupIndex: number, removeGroup: (index: number) => void}) {
-    const { control, register, getValues, setValue } = useFormContext<FormValues>();
-    const conditions = getValues(`groups.${groupIndex}.conditions`) || [];
-
-    const append = () => {
-        setValue(`groups.${groupIndex}.conditions`, [...conditions, { variable: '', operator: 'equals', value: '' }]);
-    }
-    
-    const remove = (index: number) => {
-        setValue(`groups.${groupIndex}.conditions`, conditions.filter((_, i) => i !== index));
-    }
-
+function ConditionGroupComponent({ groupIndex }: { groupIndex: number }) {
+    const { control, register } = useFormContext<FormValues>();
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `groups.${groupIndex}.conditions`
+    });
 
     return (
         <div className="space-y-2">
-            {conditions.map((field, index) => (
-                <div key={index} className={styles.conditionRow}>
+            {fields.map((field, index) => (
+                <div key={field.id} className={styles.conditionRow}>
                     <Input {...register(`groups.${groupIndex}.conditions.${index}.variable`)} placeholder="Variable" />
                      <Controller
                         control={control}
@@ -128,12 +131,12 @@ function ConditionGroupComponent({ groupIndex, removeGroup }: { groupIndex: numb
                         )}
                     />
                     <Input {...register(`groups.${groupIndex}.conditions.${index}.value`)} placeholder="Value" />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
             ))}
-            <Button type="button" variant="secondary" size="sm" onClick={() => append()}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => append({ variable: '', operator: 'equals', value: '' })}>
                 + Add AND condition
             </Button>
         </div>
