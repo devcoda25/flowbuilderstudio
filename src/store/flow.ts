@@ -26,8 +26,13 @@ export interface FlowMeta {
   id: string;
   title: string;
   channels: Channel[];
-  published: boolean;
   waMessageContext: MessageContext;
+  lastModified: number;
+}
+
+export type FullFlow = FlowMeta & {
+    nodes: Node[];
+    edges: Edge[];
 }
 
 type RFState = {
@@ -115,21 +120,23 @@ const flowSlice = (set: any, get: any) => ({
     const nodeToDuplicate = nodes.find((n: any) => n.id === nodeId);
     if (!nodeToDuplicate) return;
 
+    const newId = nanoid();
+    const isButtonItem = nodeToDuplicate.data.label === 'Buttons' || nodeToDuplicate.data.label === 'List';
+
+    const newQuickReplies = isButtonItem ? 
+      (nodeToDuplicate.data.quickReplies || []).map((qr: any) => ({ ...qr, id: nanoid() }))
+      : nodeToDuplicate.data.quickReplies;
+
     const newNode = {
       ...nodeToDuplicate,
-      id: nanoid(),
+      id: newId,
       position: {
         x: nodeToDuplicate.position.x + 30,
         y: nodeToDuplicate.position.y + 30,
       },
       data: {
         ...nodeToDuplicate.data,
-        branches: (nodeToDuplicate.data.label === 'Buttons' || nodeToDuplicate.data.label === 'List') 
-            ? [{id: 'answer1', label: 'Answer 1'}, {id: 'default', label: 'Default'}] 
-            : nodeToDuplicate.data.branches,
-        quickReplies: (nodeToDuplicate.data.label === 'Buttons' || nodeToDuplicate.data.label === 'List')
-            ? [{id: nanoid(), label: 'Button 1'}]
-            : nodeToDuplicate.data.quickReplies,
+        quickReplies: newQuickReplies,
       },
       selected: false,
     };
@@ -171,6 +178,7 @@ interface FlowMetaState {
     setTitle: (title: string) => void;
     setChannels: (channels: Channel[]) => void;
     setWaContext: (ctx: MessageContext) => void;
+    setMeta: (meta: FlowMeta) => void;
 }
 
 export const useFlowMetaStore = create<FlowMetaState>((set) => ({
@@ -178,12 +186,13 @@ export const useFlowMetaStore = create<FlowMetaState>((set) => ({
         id: 'draft-1',
         title: 'Untitled Flow',
         channels: ['whatsapp'],
-        published: false,
         waMessageContext: 'template',
+        lastModified: Date.now(),
     },
-    setTitle: (title) => set((s) => ({ meta: { ...s.meta, title: title.trim() || 'Untitled Flow' } })),
-    setChannels: (channels) => set((s) => ({ meta: { ...s.meta, channels } })),
-    setWaContext: (waMessageContext) => set((s) => ({ meta: { ...s.meta, waMessageContext } })),
+    setTitle: (title) => set((s) => ({ meta: { ...s.meta, title: title.trim() || 'Untitled Flow', lastModified: Date.now() } })),
+    setChannels: (channels) => set((s) => ({ meta: { ...s.meta, channels, lastModified: Date.now() } })),
+    setWaContext: (waMessageContext) => set((s) => ({ meta: { ...s.meta, waMessageContext, lastModified: Date.now() } })),
+    setMeta: (meta: FlowMeta) => set({ meta }),
 }));
 
 // Expose undo/redo actions

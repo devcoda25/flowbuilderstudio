@@ -4,12 +4,16 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import styles from './header-bar.module.css';
 import { CHANNELS, Channel, MessageContext } from './channel-meta';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Undo, Redo, TestTube, Save, ChevronDown, Check } from 'lucide-react';
+import { Undo, Redo, TestTube, Save, ChevronDown, Check, File as FileIcon, Folder, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 /** Handy class combiner without bringing in a dependency */
 function cn(...parts: Array<string | false | undefined>) {
@@ -40,6 +44,10 @@ export type HeaderBarProps = {
   // Actions
   onTest: () => void;
   onSaveClick?: () => void;
+  onNewFlow: () => void;
+  onOpenFlows: () => void;
+  onDeleteFlow: () => void;
+
 
   className?: string;
 };
@@ -59,6 +67,9 @@ export default function HeaderBar({
   canRedo = false,
   onTest,
   onSaveClick,
+  onNewFlow,
+  onOpenFlows,
+  onDeleteFlow,
   className,
 }: HeaderBarProps) {
   const [currentTitle, setCurrentTitle] = useState(title ?? initialTitle);
@@ -132,6 +143,27 @@ export default function HeaderBar({
         Flow Builder Header
       </h2>
       <div className={styles.left}>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">Flows <ChevronDown className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={onNewFlow}>
+                    <FileIcon className="mr-2 h-4 w-4" />
+                    <span>New Flow</span>
+                </DropdownMenuItem>
+                 <DropdownMenuItem onClick={onOpenFlows}>
+                    <Folder className="mr-2 h-4 w-4" />
+                    <span>Open Flow…</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDeleteFlow} className="text-red-600">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Delete Current Flow</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
         <div className={styles.channels} ref={popRef}>
           <Button
             variant="outline"
@@ -248,7 +280,7 @@ export default function HeaderBar({
 
         <div className={styles.group}>
           {onSaveClick && (
-            <Button variant="secondary" onClick={onSaveClick}>
+            <Button onClick={onSaveClick}>
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
           )}
