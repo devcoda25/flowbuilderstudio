@@ -188,8 +188,6 @@ function StudioPageContent() {
             onChannelsChange={setChannels}
             waContext={meta.waMessageContext}
             onWaContextChange={setWaContext}
-            isPublished={meta.published}
-            onPublishToggle={setPublished}
             onUndo={undo}
             onRedo={redo}
             canUndo={canUndo}
