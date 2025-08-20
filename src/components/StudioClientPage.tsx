@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Node } from 'reactflow';
 import { ReactFlowProvider, useReactFlow } from 'reactflow';
 import { nanoid } from 'nanoid';
@@ -11,12 +11,14 @@ import SidebarPalette, { PaletteItemPayload } from '@/components/SidebarPalette'
 import CanvasWithLayoutWorker from '@/components/CanvasWithLayoutWorker/CanvasWithLayoutWorker';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import { useFlowStore, useFlowMetaStore, undo, redo } from '@/store/flow';
+import { useFlowsStore } from '@/store/flows';
 import TestConsole from '@/components/TestConsole';
 import { useUIStore } from '@/store/ui';
 import PublishBanner from '@/components/Presence/PublishBanner';
 import { FlowEngine } from '@/engine/FlowEngine';
 import { useHistoryStore } from '@/store/history';
 import { getRandomColor } from '@/lib/color-utils';
+import { downloadJson } from '@/components/TestConsole/utils/download';
 
 import MessageContentModal from '@/components/PropertiesPanel/partials/MessageContentModal';
 import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
@@ -29,11 +31,14 @@ import GoogleSheetsModal from '@/components/PropertiesPanel/partials/GoogleSheet
 import AssignUserModal from '@/components/PropertiesPanel/partials/AssignUserModal';
 import AssignTeamModal from '@/components/PropertiesPanel/partials/AssignTeamModal';
 import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
+import FlowsModal from '@/components/FlowsModal/FlowsModal';
+
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
+import { useToast } from '@/hooks/use-toast';
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'buttons';
-  nodeId: string;
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'buttons' | 'flows';
+  nodeId?: string;
   data?: any;
   partId?: string;
 } | null;
@@ -41,11 +46,13 @@ type ModalState = {
 type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio' | 'document' };
 
 function StudioPageContent() {
-  const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd } = useFlowStore();
-  const { meta, setTitle, setChannels, setPublished, setWaContext } = useFlowMetaStore();
+  const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd, setEdges } = useFlowStore();
+  const { meta, setTitle, setChannels, setWaContext, setMeta } = useFlowMetaStore();
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
+  const { saveFlow, createNewFlow, deleteFlow, flows } = useFlowsStore();
+  const { toast } = useToast();
 
   const { isTestConsoleOpen, toggleTestConsole } = useUIStore();
   const { canUndo, canRedo } = useHistoryStore();
@@ -55,6 +62,18 @@ function StudioPageContent() {
   
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
 
+  useEffect(() => {
+    // When the active flow changes in the store, update the canvas
+    const unsub = useFlowsStore.subscribe((state, prevState) => {
+        if (state.activeFlowId !== prevState.activeFlowId && state.activeFlow) {
+            const { nodes, edges, ...meta } = state.activeFlow;
+            setNodes(nodes);
+            setEdges(edges);
+            setMeta(meta);
+        }
+    });
+    return unsub;
+  }, [setNodes, setEdges, setMeta]);
 
   engine.setFlow(nodes, edges);
 
@@ -109,12 +128,14 @@ function StudioPageContent() {
   
   const onSaveModal = (data: any) => {
     if (!modalState) return;
-    updateNodeData(modalState.nodeId, data);
+    if (modalState.nodeId) {
+      updateNodeData(modalState.nodeId, data);
+    }
     setModalState(null);
   };
   
   const onSaveMedia = (newMedia: MediaPart | MediaPart[]) => {
-    if (!modalState || !modalState.partId) return;
+    if (!modalState || !modalState.partId || !modalState.nodeId) return;
     const node = nodes.find(n => n.id === modalState.nodeId);
     if (node) {
         const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
@@ -141,7 +162,7 @@ function StudioPageContent() {
   }
   
   const onDeleteMedia = () => {
-    if (!modalState || !modalState.partId) return;
+    if (!modalState || !modalState.partId || !modalState.nodeId) return;
     const node = nodes.find(n => n.id === modalState.nodeId);
     if (node) {
         const newParts = (node.data.parts || []).filter((p: ContentPart) => p.id !== modalState!.partId);
@@ -171,6 +192,33 @@ function StudioPageContent() {
     addNode(newNode);
   };
   
+  const handleSaveFlow = useCallback(() => {
+    saveFlow({ ...meta, nodes, edges });
+    toast({
+        title: "Flow Saved",
+        description: `"${meta.title}" has been saved successfully.`,
+    });
+  }, [meta, nodes, edges, saveFlow, toast]);
+
+  const handleNewFlow = () => {
+    createNewFlow();
+    toast({
+        title: "New Flow Created",
+        description: "A new empty flow has been created.",
+    });
+  }
+
+  const handleDeleteFlow = () => {
+    if (window.confirm(`Are you sure you want to delete the flow "${meta.title}"? This cannot be undone.`)) {
+        deleteFlow(meta.id);
+        toast({
+            title: "Flow Deleted",
+            description: `"${meta.title}" has been deleted.`,
+            variant: "destructive"
+        });
+    }
+  }
+  
   const activePart = useMemo(() => {
     if (!modalState?.nodeId || !modalState?.partId) return undefined;
     const node = nodes.find(n => n.id === modalState.nodeId);
@@ -193,7 +241,10 @@ function StudioPageContent() {
             canUndo={canUndo}
             canRedo={canRedo}
             onTest={toggleTestConsole}
-            onSaveClick={() => console.log('Save clicked!', { meta, nodes, edges })}
+            onSaveClick={handleSaveFlow}
+            onNewFlow={handleNewFlow}
+            onOpenFlows={() => setModalState({ type: 'flows' })}
+            onDeleteFlow={handleDeleteFlow}
         />
       </div>
       <aside className="hidden md:block col-start-1 row-start-2 overflow-y-auto border-r border-border z-10 bg-background">
@@ -229,6 +280,10 @@ function StudioPageContent() {
       )}
       
       {/* Modals for node functions */}
+      <FlowsModal
+        isOpen={modalState?.type === 'flows'}
+        onClose={() => setModalState(null)}
+      />
       <ButtonsModal
         isOpen={modalState?.type === 'buttons'}
         onClose={() => setModalState(null)}
