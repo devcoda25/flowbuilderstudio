@@ -68,6 +68,13 @@ const flowSlice = (set: any, get: any) => ({
   onConnect: (connection: Connection) => {
     const { edges, nodes } = get();
 
+    // Prevent loops
+    const loop = edges.find((edge: Edge) => edge.source === connection.target && edge.target === connection.source);
+    if (loop) {
+        console.warn("Cannot create a connection that forms a loop.");
+        return;
+    }
+
     const sourceNode = nodes.find((n: Node) => n.id === connection.source);
     if (sourceNode?.data.type !== 'logic' && sourceNode?.data.label !== 'Buttons' && sourceNode?.data.label !== 'List') {
         const sourceHandleHasConnection = edges.some(

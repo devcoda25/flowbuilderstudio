@@ -86,8 +86,12 @@ function InnerCanvas({
   const { addNode } = useFlowStore();
   
   const [connectingNodeId, setConnectingNodeId] = useState<OnConnectStartParams | null>(null);
-  const [nodeSelector, setNodeSelector] = useState<NodeSelectorState>(null);
+  const [nodeSelector, setNodeSelector] = useState<NodeSelectorState | null>(null);
   const selectorRef = useRef<HTMLDivElement>(null);
+
+  useClickAway(selectorRef, () => {
+    setNodeSelector(null);
+  });
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -165,20 +169,22 @@ function InnerCanvas({
         const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
         const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
         
-        setNodeSelector({
-            x: clientX - left,
-            y: clientY - top,
-            sourceNode: nodeId,
-            sourceHandle: handleId
-        })
+        setTimeout(() => {
+          setNodeSelector({
+              x: clientX - left,
+              y: clientY - top,
+              sourceNode: nodeId,
+              sourceHandle: handleId
+          });
+        }, 10);
     }
     setConnectingNodeId(null);
     onConnectEnd(event);
   }, [project, connectingNodeId, onConnectEnd]);
 
-  useClickAway(selectorRef, () => {
+  const handlePaneClick = useCallback(() => {
     setNodeSelector(null);
-  });
+  }, []);
 
   const handleSelectNode = (item: PaletteItemPayload) => {
     if (!nodeSelector) return;
@@ -234,6 +240,7 @@ function InnerCanvas({
           onInit={(inst) => (rfRef.current = inst)}
           onSelectionChange={onSelectionChange}
           onNodeDoubleClick={handleNodeDoubleClick}
+          onPaneClick={handlePaneClick}
           nodeTypes={defaultNodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
           connectionMode={ConnectionMode.Loose}
@@ -242,6 +249,7 @@ function InnerCanvas({
           fitView
           proOptions={{ hideAttribution: true }}
         >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls className={styles.controls} />
           <MiniMap pannable zoomable />
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
@@ -253,7 +261,7 @@ function InnerCanvas({
                 ref={selectorRef}
                 style={{ position: 'absolute', left: nodeSelector.x + 10, top: nodeSelector.y, zIndex: 1000 }}
             >
-                <NodeSelector onSelect={handleSelectNode} />
+                <NodeSelector onSelect={handleSelectNode} onClose={() => setNodeSelector(null)} />
             </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -40,9 +41,7 @@ export type HeaderBarProps = {
 
   // Actions
   onTest: () => void;
-  onPublishToggle: (next: boolean) => void;
   onSaveClick?: () => void;
-  isPublished?: boolean;
 
   className?: string;
 };
@@ -61,9 +60,7 @@ export default function HeaderBar({
   canUndo = false,
   canRedo = false,
   onTest,
-  onPublishToggle,
   onSaveClick,
-  isPublished = false,
   className,
 }: HeaderBarProps) {
   const controlled = typeof title === 'string';
@@ -136,11 +133,6 @@ export default function HeaderBar({
       setEditing(false);
     }
   }
-
-  function handlePublishToggle(next: boolean) {
-    onPublishToggle(next);
-  }
-
 
   return (
     <header className={cn(styles.header, className)} aria-labelledby={headerId}>
@@ -271,13 +263,6 @@ export default function HeaderBar({
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
           )}
-          <div className={styles.toggle}>
-            <Label htmlFor="publish-toggle" className="sr-only">
-              Publish flow
-            </Label>
-            <Switch id="publish-toggle" checked={!!isPublished} onCheckedChange={handlePublishToggle} />
-            <span>{isPublished ? 'Published' : 'Draft'}</span>
-          </div>
         </div>
       </div>
     </header>

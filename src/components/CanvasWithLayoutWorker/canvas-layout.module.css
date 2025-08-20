@@ -13,9 +13,9 @@
     --line-color: hsl(215 20% 88%);
     background-color: var(--bg-color, #fdfdfd);
 }
-.canvas :global(.react-flow__background) .react-flow__pattern path {
-  stroke: var(--line-color);
-  stroke-opacity: 0.5;
+.canvas :global(.react-flow__background) .react-flow__pattern circle {
+  fill: var(--line-color);
+  opacity: 0.5;
 }
 
 

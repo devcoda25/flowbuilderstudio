@@ -6,12 +6,15 @@ import * as LucideIcons from 'lucide-react';
 import { SECTION_DATA, ItemDefinition, PaletteItemPayload } from '@/components/SidebarPalette/sections-data';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '../ui/button';
+import { X } from 'lucide-react';
 
 type NodeSelectorProps = {
   onSelect: (item: PaletteItemPayload) => void;
+  onClose: () => void;
 };
 
-export default function NodeSelector({ onSelect }: NodeSelectorProps) {
+export default function NodeSelector({ onSelect, onClose }: NodeSelectorProps) {
   const [search, setSearch] = useState('');
 
   const filteredItems = useMemo(() => {
@@ -31,7 +34,10 @@ export default function NodeSelector({ onSelect }: NodeSelectorProps) {
   }
 
   return (
-    <div className="w-64 bg-card border border-border rounded-lg shadow-xl flex flex-col">
+    <div className="w-64 bg-card border border-border rounded-lg shadow-xl flex flex-col relative">
+       <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7" onClick={onClose}>
+        <X className="w-4 h-4" />
+      </Button>
       <div className="p-2 border-b border-border">
         <Input
           placeholder="Search nodes..."
