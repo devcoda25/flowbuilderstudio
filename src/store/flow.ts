@@ -47,6 +47,7 @@ type RFState = {
     onConnectEnd: () => void;
     addNode: (node: Node) => void;
     deleteNode: (nodeId: string) => void;
+    deleteEdge: (edgeId: string) => void;
     duplicateNode: (nodeId: string) => void;
     updateNodeData: (nodeId: string, data: Record<string, any>) => void;
     setNodes: (nodes: Node[]) => void;
@@ -72,6 +73,11 @@ const flowSlice = (set: any, get: any) => ({
     });
   },
   onConnect: (connection: Connection) => {
+    if (connection.source === connection.target) {
+        console.warn("Cannot connect a node to itself.");
+        return;
+    }
+
     const { edges, nodes } = get();
 
     // Prevent loops
@@ -95,7 +101,7 @@ const flowSlice = (set: any, get: any) => ({
 
 
     set({
-      edges: addEdge({ ...connection, type: 'bezier', markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 } }, get().edges),
+      edges: addEdge({ ...connection, type: 'buttonedge', markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 } }, get().edges),
     });
   },
   onConnectStart: (_: any, params: OnConnectStartParams) => {
@@ -113,6 +119,11 @@ const flowSlice = (set: any, get: any) => ({
     set((state: any) => ({
       nodes: state.nodes.filter((n: any) => n.id !== nodeId),
       edges: state.edges.filter((e: any) => e.source !== nodeId && e.target !== nodeId),
+    }));
+  },
+  deleteEdge: (edgeId: string) => {
+    set((state: any) => ({
+        edges: state.edges.filter((e: any) => e.id !== edgeId),
     }));
   },
   duplicateNode: (nodeId: string) => {

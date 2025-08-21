@@ -19,7 +19,6 @@ import {
 import { useFlowStore } from '@/store/flow';
 import { Badge } from '@/components/ui/badge';
 import { nanoid } from 'nanoid';
-import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 import { Input } from '@/components/ui/input';
 
 
@@ -170,16 +169,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
                       value={(part as any).content}
                       onChange={(content) => updatePartContent(part.id, content)}
                       placeholder="Type your message..."
-                    />
-                </div>
-                <div className={styles.variableInserter}>
-                    <VariableChipAutocomplete
-                        variables={['name', 'email', 'cart_item', 'order_id']}
-                        onInsert={(variable) => {
-                            const currentContent = (part as any).content || '';
-                            // This is a simplified insertion. A real implementation would use the editor's API.
-                            updatePartContent(part.id, currentContent.replace(/<\/p>$/, `{{${variable}}}</p>`));
-                        }}
+                      variables={['name', 'email', 'cart_item', 'order_id']}
                     />
                 </div>
             </div>

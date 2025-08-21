@@ -1,5 +1,7 @@
 
 
+
+
 .root { 
   position: relative; 
   height: 100%; 
@@ -195,13 +197,14 @@
 
 .messageContent {
   position: relative;
-  background: hsl(var(--muted));
+  background: hsl(var(--background));
   border-radius: 8px;
   padding: 10px 12px;
+  border: 1px solid hsl(var(--border));
 }
 
 .messageContent:hover {
-  background: hsl(var(--border));
+  border-color: hsl(var(--accent));
 }
 
 .messageTextarea {
@@ -218,12 +221,6 @@
 }
 .messageTextarea:focus {
   outline: none;
-}
-.variableInserter {
-    position: absolute;
-    bottom: 6px;
-    right: 6px;
-    z-index: 10;
 }
 
 .mediaGrid {
@@ -413,11 +410,32 @@
   
 }
 
+.edgebuttonWrapper {
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+:global(.react-flow__edge:hover) .edgebuttonWrapper {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.edgebutton {
+    width: 24px;
+    height: 24px;
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border: 1px solid hsl(var(--card));
+    cursor: pointer;
+    border-radius: 99px;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+}
+.edgebutton:hover {
+    box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 4px hsl(var(--destructive));
+}
+
     
-
-
-
-
-
-
 

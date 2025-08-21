@@ -7,7 +7,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import {Table } from '@tiptap/extension-table'; // Standardized import
+import {Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
@@ -36,6 +36,7 @@ import {
   Redo,
   Table as TableIcon,
   Palette,
+  Parentheses,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,14 +49,16 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import ImageAttachmentModal from './ImageAttachmentModal';
+import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  variables?: string[];
 };
 
-const Toolbar = ({ editor }: { editor: Editor | null }) => {
+const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: string[] }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   if (!editor) {
@@ -75,10 +78,14 @@ const Toolbar = ({ editor }: { editor: Editor | null }) => {
 
   const handleImageSave = (media: any) => {
     if (media && media.url) {
-      editor.chain().focus().setImage({ src: media.url }).run();
+      editor.chain().focus().setImage({ src: media.url, style: 'width: 20%' }).run();
     }
     setIsImageModalOpen(false);
   };
+  
+  const handleVariableInsert = (variable: string) => {
+    editor.chain().focus().insertContent(`{{${variable}}}`).run();
+  }
 
   return (
     <>
@@ -390,6 +397,12 @@ const Toolbar = ({ editor }: { editor: Editor | null }) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        {variables && variables.length > 0 && (
+          <>
+            <Separator orientation="vertical" className="h-6 mx-1" />
+            <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
+          </>
+        )}
       </div>
       <ImageAttachmentModal
         isOpen={isImageModalOpen}
@@ -401,7 +414,7 @@ const Toolbar = ({ editor }: { editor: Editor | null }) => {
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -422,7 +435,15 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         allowBase64: true,
         HTMLAttributes: {
           class: 'inline-block',
-          style: 'width: 20%',
+        },
+      }).extend({
+        addAttributes() {
+            return {
+                ...this.parent?.(),
+                style: {
+                    default: null,
+                },
+            };
         },
       }),
       Table.configure({
@@ -461,12 +482,12 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
           'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
       },
     },
-    immediatelyRender: false, // Added to fix SSR error
+    immediatelyRender: false,
   });
 
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} variables={variables} />
       <div className="flex-grow overflow-y-auto min-h-[120px]">
         <EditorContent editor={editor} placeholder={placeholder} />
       </div>

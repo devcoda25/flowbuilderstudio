@@ -29,6 +29,7 @@ import { useFlowStore } from '@/store/flow';
 import type { PaletteItemPayload } from '../SidebarPalette';
 import { getRandomColor } from '@/lib/color-utils';
 import NodeSelector from './NodeSelector';
+import ButtonEdge from './edges/ButtonEdge';
 
 const GRID_SIZE = 20;
 
@@ -37,6 +38,10 @@ const defaultNodeTypes = {
   group: GroupBoxNode,
   subflow: SubflowNode,
 };
+
+const defaultEdgeTypes = {
+  buttonedge: ButtonEdge,
+}
 
 export type CanvasWithLayoutWorkerProps = {
   nodes: Node[];
@@ -237,6 +242,7 @@ export default function CanvasWithLayoutWorker({
           onNodeDoubleClick={handleNodeDoubleClick}
           onPaneClick={handlePaneClick}
           nodeTypes={defaultNodeTypes}
+          edgeTypes={defaultEdgeTypes}
           connectionLineType={ConnectionLineType.Bezier}
           connectionMode={ConnectionMode.Loose}
           snapToGrid

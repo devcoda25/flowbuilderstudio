@@ -1,8 +1,10 @@
+
 import React, { useMemo, useState } from 'react';
 import styles from './variableChip.module.css';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Parentheses } from 'lucide-react';
 
 export default function VariableChipAutocomplete({
   variables = [],
@@ -18,30 +20,37 @@ export default function VariableChipAutocomplete({
     () => variables.filter(v => v.toLowerCase().includes(q.toLowerCase())).slice(0, 8),
     [variables, q]
   );
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleInsert = (v: string) => {
+    onInsert(v);
+    setIsOpen(false);
+  }
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="text-xs">
-          {`{{...}}`}
+        <Button variant="ghost" className="h-8 px-2" title={label}>
+          <Parentheses className="h-4 w-4 mr-1" />
+          Variables
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80">
+      <PopoverContent className="w-60 p-0">
         <div className={styles.root}>
-          <label className={styles.label}>{label}</label>
-          <Input
-            className={styles.input}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search vars…"
-          />
-          <div className={styles.chips}>
-            {list.map(v => (
-              <Button key={v} variant="secondary" size="sm" className={styles.chip} type="button" onClick={() => onInsert(v)}>
+          <div className="p-2 border-b">
+            <Input
+              className="h-8"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search variables…"
+            />
+          </div>
+          <div className={styles.list}>
+            {list.length > 0 ? list.map(v => (
+              <button key={v} className={styles.listItem} type="button" onClick={() => handleInsert(v)}>
                 {v}
-              </Button>
-            ))}
-             {list.length === 0 && <span className={styles.muted}>No matches</span>}
+              </button>
+            )) : <span className={styles.muted}>No matches</span>}
           </div>
         </div>
       </PopoverContent>
