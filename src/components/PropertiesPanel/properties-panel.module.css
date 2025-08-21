@@ -1,7 +1,12 @@
+
+
+
+
+
 .root {
   position: fixed;
   top: 0; right: 0;
-  width: 380px;
+  width: 420px;
   max-width: 92vw;
   height: 100%;
   background: hsl(var(--card));
@@ -11,6 +16,61 @@
   box-shadow: -14px 0 40px rgba(0,0,0,.15);
   z-index: 40;
 }
+
+.root :global(.ProseMirror) {
+  outline: none;
+}
+.root :global(.ProseMirror ul),
+.root :global(.ProseMirror ol) {
+  padding-inline-start: 1.5rem;
+  list-style: revert;
+}
+
+.root :global(.ProseMirror table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    color: black; /* Ensure text is visible */
+}
+
+.root :global(.ProseMirror .resizing) {
+  border: 2px solid hsl(var(--ring));
+}
+
+.root :global(.ProseMirror th),
+.root :global(.ProseMirror td) {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5em;
+  min-width: 1em;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  color: black !important; /* Force black text color */
+}
+.root :global(.ProseMirror th) {
+  font-weight: bold;
+  text-align: left;
+  background-color: hsl(var(--muted));
+}
+.root :global(.ProseMirror .selectedCell:after) {
+    z-index: 2;
+    position: absolute;
+    content: "";
+    left: 0; right: 0; top: 0; bottom: 0;
+    background: hsla(var(--primary), 0.1);
+    pointer-events: none;
+}
+.root :global(.ProseMirror .grip-column) {
+    width: 8px;
+    top: 0;
+    position: absolute;
+    background-color: hsl(var(--border));
+    cursor: col-resize;
+}
+.root :global(.ProseMirror .grip-column:hover) {
+    background-color: hsl(var(--ring));
+}
+
 
 .header {
   display: flex; align-items: center; justify-content: space-between;

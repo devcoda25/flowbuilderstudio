@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { nanoid } from 'nanoid';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -36,7 +36,7 @@ export default function ButtonsModal({
 }: ButtonsModalProps) {
   const methods = useForm<FormValues>({
     defaultValues: {
-      content: '',
+      content: 'Ask a question',
       quickReplies: [{ id: nanoid(), label: 'Button 1' }],
       ...initialData
     }
@@ -53,7 +53,7 @@ export default function ButtonsModal({
   useEffect(() => {
     if (isOpen) {
       methods.reset({
-        content: '',
+        content: 'Ask a question',
         quickReplies: [{ id: nanoid(), label: 'Button 1' }],
         ...initialData,
       });
@@ -67,26 +67,16 @@ export default function ButtonsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader>
               <DialogTitle>Edit Buttons</DialogTitle>
               <DialogDescription>
-                Configure the question and the buttons for the user to select.
+                Configure the buttons for the user to select.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="message-text">Question</Label>
-                <Textarea
-                  id="message-text"
-                  placeholder="Type your question here..."
-                  rows={3}
-                  {...register('content')}
-                />
-              </div>
-
               <div className="grid gap-2">
                 <Label>Buttons</Label>
                 <ScrollArea className="h-64 pr-4">

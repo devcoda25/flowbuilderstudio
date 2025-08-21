@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,7 @@ export default function DocumentAttachmentModal({
         const reader = new FileReader();
         reader.onload = (e) => {
             onSave({ type: 'document', url: e.target?.result as string, name: file.name });
+            onClose();
         };
         reader.readAsDataURL(file);
     } else {
@@ -83,6 +85,7 @@ export default function DocumentAttachmentModal({
                 processedCount++;
                 if (processedCount === files.length) {
                     onSave(newParts);
+                    onClose();
                 }
             };
             reader.readAsDataURL(file);
@@ -122,7 +125,7 @@ export default function DocumentAttachmentModal({
         </div>
         <DialogFooter className="justify-between">
           <div>
-            {media && media.type === 'document' && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
+            {media && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>

@@ -20,7 +20,6 @@ import { useHistoryStore } from '@/store/history';
 import { getRandomColor } from '@/lib/color-utils';
 import { downloadJson } from '@/components/TestConsole/utils/download';
 
-import MessageContentModal from '@/components/PropertiesPanel/partials/MessageContentModal';
 import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
 import VideoAttachmentModal from '@/components/PropertiesPanel/partials/VideoAttachmentModal';
 import DocumentAttachmentModal from '@/components/PropertiesPanel/partials/DocumentAttachmentModal';
@@ -30,14 +29,13 @@ import ConditionModal from '@/components/PropertiesPanel/partials/ConditionModal
 import GoogleSheetsModal from '@/components/PropertiesPanel/partials/GoogleSheetsModal';
 import AssignUserModal from '@/components/PropertiesPanel/partials/AssignUserModal';
 import AssignTeamModal from '@/components/PropertiesPanel/partials/AssignTeamModal';
-import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
 import FlowsModal from '@/components/FlowsModal/FlowsModal';
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { useToast } from '@/hooks/use-toast';
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'buttons' | 'flows';
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows';
   nodeId?: string;
   data?: any;
   partId?: string;
@@ -51,7 +49,7 @@ function StudioPageContent() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
-  const { saveFlow, createNewFlow, deleteFlow, flows, setActiveFlow } = useFlowsStore();
+  const { saveFlow, createNewFlow, deleteFlow, flows } = useFlowsStore();
   const { toast } = useToast();
 
   const { isTestConsoleOpen, toggleTestConsole } = useUIStore();
@@ -82,24 +80,14 @@ function StudioPageContent() {
     const nodeLabel = node.data?.label;
 
     if (nodeLabel === 'Send a Message' && options?.partId) {
-        switch(options.type) {
-            case 'text':
-                // Inline editing, no modal needed
-                return;
-            case 'image':
-            case 'video':
-            case 'audio':
-            case 'document':
-                 setModalState({ type: options.type, nodeId: node.id, partId: options.partId, data: node.data });
-                 return;
+        const part = node.data.parts?.find((p: ContentPart) => p.id === options.partId);
+        if (part) {
+            setModalState({ type: part.type, nodeId: node.id, partId: options.partId, data: { parts: node.data.parts } });
         }
+        return;
     }
-
-    if (nodeType === 'messaging' || nodeLabel === 'Ask a Question') {
-        // Old logic for message modal, no longer used for Send a Message text parts
-    } else if (nodeLabel === 'Buttons' || nodeLabel === 'List') {
-        setModalState({ type: 'buttons', nodeId: node.id, data: { content: node.data.content, quickReplies: node.data.quickReplies } });
-    } else if (nodeLabel === 'Webhook') {
+    
+    if (nodeLabel === 'Webhook') {
         setModalState({ type: 'webhook', nodeId: node.id, data: node.data });
     } else if (nodeLabel === 'Set a Condition') {
         setModalState({ type: 'condition', nodeId: node.id, data: { groups: node.data.groups } });
@@ -133,29 +121,28 @@ function StudioPageContent() {
   };
   
   const onSaveMedia = (newMedia: MediaPart | MediaPart[]) => {
-    if (!modalState || !modalState.partId || !modalState.nodeId) return;
+    if (!modalState || !modalState.nodeId) return;
     const node = nodes.find(n => n.id === modalState.nodeId);
-    if (node) {
-        const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
-        
-        let parts = [...(node.data.parts || [])];
+    if (!node) return;
+
+    const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+    let parts = [...(node.data.parts || [])];
+
+    if (modalState.partId) { // Editing an existing part or replacing a placeholder
         const partIndex = parts.findIndex(p => p.id === modalState.partId);
-
         if (partIndex !== -1) {
-            // Replace the placeholder part with the first new media item
             parts[partIndex] = { ...parts[partIndex], ...newMediaArray[0] };
-
-            // Add any additional media items after the first one
             if (newMediaArray.length > 1) {
-                const additionalParts = newMediaArray.slice(1).map(media => ({
-                    id: nanoid(),
-                    ...media,
-                }));
+                const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
                 parts.splice(partIndex + 1, 0, ...additionalParts);
             }
         }
-        updateNodeData(modalState.nodeId, { parts });
+    } else { // Adding new parts (e.g., from RTE image button)
+        const additionalParts = newMediaArray.map(media => ({ id: nanoid(), ...media }));
+        parts = [...parts, ...additionalParts];
     }
+
+    updateNodeData(modalState.nodeId, { parts });
     setModalState(null);
   }
   
@@ -283,12 +270,6 @@ function StudioPageContent() {
       <FlowsModal
         isOpen={modalState?.type === 'flows'}
         onClose={() => setModalState(null)}
-      />
-      <ButtonsModal
-        isOpen={modalState?.type === 'buttons'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
       />
       <ImageAttachmentModal
         isOpen={modalState?.type === 'image'}

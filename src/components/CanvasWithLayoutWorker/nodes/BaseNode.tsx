@@ -1,3 +1,4 @@
+
 import React, {useCallback, useEffect, useRef} from 'react'
 import { Handle, Position, Node, useReactFlow } from 'reactflow'
 import styles from '../canvas-layout.module.css'
@@ -5,6 +6,8 @@ import NodeAvatars from '@/components/Presence/NodeAvatars';
 import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Image as ImageIcon, Plus } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import DOMPurify from 'dompurify';
+import RichTextEditor from '@/components/PropertiesPanel/partials/RichTextEditor'
 
 import {
   DropdownMenu,
@@ -17,14 +20,17 @@ import { useFlowStore } from '@/store/flow';
 import { Badge } from '@/components/ui/badge';
 import { nanoid } from 'nanoid';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
+import { Input } from '@/components/ui/input';
 
 
 export type ContentPart = 
   | { id: string; type: 'text'; content: string }
   | { id: string; type: 'image'; url?: string; name?: string }
   | { id: string; type: 'video'; url?: string; name?: string }
-  | { id:string; type: 'audio'; url?: string; name?: string }
+  | { id: string;type: 'audio'; url?: string; name?: string }
   | { id: string; type: 'document'; url?: string; name?: string };
+
+export type QuickReply = { id: string; label: string };
 
 export type BaseNodeData = {
   label: string
@@ -42,7 +48,7 @@ export type BaseNodeData = {
 
   branches?: { id: string; label: string; conditions: any[] }[];
   groups?: { type: 'and' | 'or', conditions: { variable: string, operator: string, value: string }[] }[];
-  quickReplies?: { id: string; label: string }[];
+  quickReplies?: QuickReply[];
   onOpenProperties?: (node: Node) => void;
   onNodeDoubleClick?: (node: Node, options?: { partId?: string; type?: string }) => void;
   onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
@@ -72,7 +78,7 @@ const MEDIA_TYPES: ContentPart['type'][] = ['image', 'video', 'audio', 'document
 function MediaGridItem({ part, onDoubleClick }: { part: ContentPart, onDoubleClick: () => void }) {
     const getIcon = () => {
         switch (part.type) {
-            case 'image': return part.url ? <img src={part.url} alt={part.name || 'Image'} className={styles.mediaGridImage} /> : <ImageIcon size={24} />;
+            case 'image': return part.url ? <img src={part.url} alt={part.name || 'Image'} className={styles.mediaGridImage} data-ai-hint="abstract background" /> : <ImageIcon size={24} />;
             case 'video': return <Film size={24} />;
             case 'document': return <FileIcon size={24} />;
             case 'audio': return <AudioLines size={24} />;
@@ -112,13 +118,15 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const handleDoubleClick = (partId?: string, type?: string) => {
     if (!thisNode) return;
-    const partType = type || parts.find(p => p.id === partId)?.type;
     
     if (isMessageNode && data.onNodeDoubleClick) {
-        if (partType) {
+        const partType = type || parts.find(p => p.id === partId)?.type;
+        if (partType && partType !== 'text') { // Don't open modal for text parts
             data.onNodeDoubleClick(thisNode, { partId: partId, type: partType });
+        } else if (partType !== 'text') {
+           data.onNodeDoubleClick(thisNode);
         }
-    } else {
+    } else if (!isButtonsNode) { // Prevent modal for buttons node
         data.onNodeDoubleClick?.(thisNode);
     }
   };
@@ -126,7 +134,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const addPart = (type: ContentPart['type']) => {
     const newPart: ContentPart = 
         type === 'text' 
-        ? { id: nanoid(), type: 'text', content: '' }
+        ? { id: nanoid(), type: 'text', content: '<p></p>' }
         : { id: nanoid(), type, url: undefined, name: undefined};
     const newParts = [...parts, newPart];
     updateNodeData(id, { parts: newParts });
@@ -147,22 +155,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     updateNodeData(id, { parts: newParts });
   }
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>, partId: string) => {
-    updatePartContent(partId, e.target.value);
-  }
-
-  const textRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
-
-  useEffect(() => {
-    // Auto-resize textareas
-    Object.values(textRefs.current).forEach(textarea => {
-      if (textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight}px`;
-      }
-    });
-  }, [parts]);
-  
     const mediaParts = parts.filter(p => MEDIA_TYPES.includes(p.type));
     const textParts = parts.filter(p => p.type === 'text');
     const MAX_GRID_ITEMS = 4;
@@ -173,20 +165,20 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         <div key={part.id} className={styles.messagePart}>
             <div className={styles.messageContent}>
                 <button className={styles.deletePartButton} onClick={() => removePart(part.id)} title="Delete message"><Trash2 size={14} /></button>
-                <textarea
-                    ref={(el) => { if (el) textRefs.current[part.id] = el; }}
-                    className={styles.messageTextarea}
-                    placeholder="Click to edit message..."
-                    value={(part as any).content}
-                    onChange={(e) => handleTextChange(e, part.id)}
-                    rows={1}
-                />
+                 <div className="nodrag">
+                    <RichTextEditor
+                      value={(part as any).content}
+                      onChange={(content) => updatePartContent(part.id, content)}
+                      placeholder="Type your message..."
+                    />
+                </div>
                 <div className={styles.variableInserter}>
                     <VariableChipAutocomplete
                         variables={['name', 'email', 'cart_item', 'order_id']}
                         onInsert={(variable) => {
                             const currentContent = (part as any).content || '';
-                            updatePartContent(part.id, currentContent + `{{${variable}}}`);
+                            // This is a simplified insertion. A real implementation would use the editor's API.
+                            updatePartContent(part.id, currentContent.replace(/<\/p>$/, `{{${variable}}}</p>`));
                         }}
                     />
                 </div>
@@ -198,7 +190,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         renderedParts.push(
             <div key="media-grid" className={styles.mediaGrid}>
                 {mediaToShow.map(part => (
-                    <MediaGridItem key={part.id} part={part} onDoubleClick={() => handleDoubleClick(part.id, part.type)} />
+                    <MediaGridItem key={part.id} part={part} onDoubleClick={() => data.onOpenAttachmentModal?.(id, part.id, part.type as any)} />
                 ))}
                 {moreCount > 0 && (
                      <div className={`${styles.mediaGridItem} ${styles.mediaGridMore}`}>
@@ -208,6 +200,85 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
             </div>
         )
     }
+
+    const messageBody = (
+        <div className={styles.messageNodeBody}>
+            {parts.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground p-4">
+                Add content using the buttons below.
+            </div>
+            )}
+            {renderedParts}
+            <div className={styles.addPartButtons}>
+                <Button variant="outline" size="sm" onClick={() => addPart('text')}><MessageSquareIcon size={16}/> Message</Button>
+                <Button variant="outline" size="sm" onClick={() => addPart('image')}><Image size={16}/> Image</Button>
+                <Button variant="outline" size="sm" onClick={() => addPart('video')}><Video size={16}/> Video</Button>
+                <Button variant="outline" size="sm" onClick={() => addPart('audio')}><AudioLines size={16}/> Audio</Button>
+                <Button variant="outline" size="sm" onClick={() => addPart('document')}><FileText size={16}/> Document</Button>
+            </div>
+        </div>
+    );
+    
+    const createMarkup = (html: string) => {
+      // Use DOMPurify on the client side only
+      if (typeof window !== 'undefined') {
+        return { __html: DOMPurify.sanitize(html) };
+      }
+      return { __html: html }; // On SSR, trust the content
+    };
+
+    const updateButtonLabel = (buttonId: string, newLabel: string) => {
+      const newReplies = (data.quickReplies || []).map(qr => 
+        qr.id === buttonId ? { ...qr, label: newLabel } : qr
+      );
+      updateNodeData(id, { quickReplies: newReplies });
+    };
+
+    const addButton = () => {
+      const newReplies = [...(data.quickReplies || []), { id: nanoid(), label: 'New Button' }];
+      updateNodeData(id, { quickReplies: newReplies });
+    };
+
+    const removeButton = (buttonId: string) => {
+      const newReplies = (data.quickReplies || []).filter(qr => qr.id !== buttonId);
+      updateNodeData(id, { quickReplies: newReplies });
+    };
+
+    const buttonsBody = (
+      <div className={styles.buttonsNodeBody} >
+         <div className={`${styles.buttonEditorWrapper} nodrag`}>
+            <RichTextEditor
+              value={data.content || '<p>Ask a question here</p>'}
+              onChange={(content) => updateNodeData(id, { content })}
+              placeholder="Ask a question..."
+            />
+        </div>
+        <div className={styles.buttonsList}>
+          {(data.quickReplies || []).map((branch: QuickReply, index: number) => (
+              <div key={branch.id} className={styles.buttonItem}>
+                  <Input
+                    value={branch.label}
+                    onChange={(e) => updateButtonLabel(branch.id, e.target.value)}
+                    placeholder={`Button ${index + 1}`}
+                    className="h-8 nodrag"
+                  />
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeButton(branch.id)}>
+                      <Trash2 className="w-4 h-4"/>
+                  </Button>
+                   <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={branch.id}
+                      className={styles.buttonHandle}
+                   />
+              </div>
+          ))}
+        </div>
+        <Button variant="outline" size="sm" className="mt-2" onClick={addButton}>
+          <Plus size={16} className="mr-2"/> Add button
+        </Button>
+      </div>
+    )
 
 
   return (
@@ -258,24 +329,10 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       </div>
       <div className={styles.nodeBody}>
         {isMessageNode ? (
-          <div className={styles.messageNodeBody}>
-            {parts.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground p-4">
-                Add content using the buttons below.
-              </div>
-            )}
-            {renderedParts}
-            <div className={styles.addPartButtons}>
-                <Button variant="outline" size="sm" onClick={() => addPart('text')}><MessageSquareIcon size={16}/> Message</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('image')}><Image size={16}/> Image</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('video')}><Video size={16}/> Video</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('audio')}><AudioLines size={16}/> Audio</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('document')}><FileText size={16}/> Document</Button>
-            </div>
-          </div>
+          messageBody
         ) : isAskQuestionNode ? (
           <div className={styles.buttonsNodeBody} onClick={() => handleDoubleClick()}>
-            <p className={styles.buttonsQuestion}>{data.content || 'Ask a question here'}</p>
+            <div dangerouslySetInnerHTML={createMarkup(data.content || 'Ask a question here')} />
           </div>
         ) : isConditionNode ? (
           <div className={styles.conditionBody} onClick={() => handleDoubleClick()}>
@@ -299,22 +356,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
             )}
           </div>
         ) : isButtonsNode ? (
-          <div className={styles.buttonsNodeBody} onClick={() => handleDoubleClick()}>
-            <p className={styles.buttonsQuestion}>{data.content || 'Ask a question here'}</p>
-            <div className={styles.buttonsList}>
-              {(data.quickReplies || []).map((branch: any) => (
-                  <div key={branch.id} className={styles.buttonItem}>
-                      <span>{branch.label}</span>
-                       <Handle
-                          type="source"
-                          position={Position.Right}
-                          id={branch.id}
-                          className={styles.buttonHandle}
-                       />
-                  </div>
-              ))}
-            </div>
-          </div>
+          buttonsBody
         ) : (
           <p onClick={() => handleDoubleClick()}>{data.description || 'Double-click to configure.'}</p>
         )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ export default function AudioAttachmentModal({
         const reader = new FileReader();
         reader.onload = (e) => {
             onSave({ type: 'audio', url: e.target?.result as string, name: file.name });
+            onClose();
         };
         reader.readAsDataURL(file);
     } else {
@@ -77,6 +79,7 @@ export default function AudioAttachmentModal({
                 processedCount++;
                 if (processedCount === files.length) {
                     onSave(newParts);
+                    onClose();
                 }
             };
             reader.readAsDataURL(file);
@@ -123,7 +126,7 @@ export default function AudioAttachmentModal({
         </div>
         <DialogFooter className="justify-between">
           <div>
-            {media && media.type === 'audio' && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
+            {media && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
