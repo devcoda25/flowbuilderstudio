@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -7,12 +6,12 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import {Table } from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import Image from '@tiptap/extension-image';
-import {TextStyle} from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import {
   Bold,
@@ -36,7 +35,6 @@ import {
   Redo,
   Table as TableIcon,
   Palette,
-  Parentheses,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -51,6 +49,26 @@ import {
 import ImageAttachmentModal from './ImageAttachmentModal';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 
+// Define MediaPart interface to match ImageAttachmentModal expectations
+interface MediaPart {
+  url: string;
+  // Add other properties if needed (e.g., id, alt, title)
+}
+
+// Extend Tiptap Image extension types to include style attribute
+declare module '@tiptap/extension-image' {
+  interface ImageOptions {
+    style?: string | null;
+  }
+
+  interface SetImageOptions {
+    src: string;
+    alt?: string;
+    title?: string;
+    style?: string;
+  }
+}
+
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
@@ -58,7 +76,7 @@ type RichTextEditorProps = {
   variables?: string[];
 };
 
-const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: string[] }) => {
+const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: string[] }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   if (!editor) {
@@ -76,16 +94,26 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: str
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-  const handleImageSave = (media: any) => {
-    if (media && media.url) {
-      editor.chain().focus().setImage({ src: media.url, style: 'width: 20%' }).run();
+  const handleImageSave = (media: MediaPart | MediaPart[] | null) => {
+    if (!media) {
+      setIsImageModalOpen(false);
+      return;
+    }
+    if (!Array.isArray(media)) {
+      // Handle single MediaPart
+      if (media?.url) {
+        editor.chain().focus().setImage({ src: media.url, style: 'width: 20%' }).run();
+      }
+    } else if (media.length > 0 && media[0]?.url) {
+      // Handle array of MediaPart (insert first image)
+      editor.chain().focus().setImage({ src: media[0].url, style: 'width: 20%' }).run();
     }
     setIsImageModalOpen(false);
   };
-  
+
   const handleVariableInsert = (variable: string) => {
     editor.chain().focus().insertContent(`{{${variable}}}`).run();
-  }
+  };
 
   return (
     <>
@@ -310,7 +338,9 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: str
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
+            <DropdownMenuItem
+              onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+            >
               Insert Table
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -408,7 +438,9 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: str
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
         onSave={handleImageSave}
-        onDelete={() => { /* Not needed for new images */ }}
+        onDelete={() => {
+          /* Not needed for new images */
+        }}
       />
     </>
   );
@@ -438,12 +470,12 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         },
       }).extend({
         addAttributes() {
-            return {
-                ...this.parent?.(),
-                style: {
-                    default: null,
-                },
-            };
+          return {
+            ...this.parent?.(),
+            style: {
+              default: null,
+            },
+          };
         },
       }),
       Table.configure({
