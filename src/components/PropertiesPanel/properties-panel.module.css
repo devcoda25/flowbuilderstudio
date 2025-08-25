@@ -3,6 +3,7 @@
 
 
 
+
 .root {
   position: fixed;
   top: 0; right: 0;
@@ -30,7 +31,7 @@
     border-collapse: collapse;
     width: 100%;
     margin: 1em 0;
-    color: black; /* Ensure text is visible */
+    color: hsl(var(--foreground));
 }
 
 .root :global(.ProseMirror .resizing) {
@@ -45,8 +46,9 @@
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
-  color: black !important; /* Force black text color */
+  color: hsl(var(--foreground));
 }
+
 .root :global(.ProseMirror th) {
   font-weight: bold;
   text-align: left;
@@ -63,6 +65,7 @@
 .root :global(.ProseMirror .grip-column) {
     width: 8px;
     top: 0;
+    right: -4px;
     position: absolute;
     background-color: hsl(var(--border));
     cursor: col-resize;

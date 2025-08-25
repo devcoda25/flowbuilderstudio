@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -35,6 +36,10 @@ import {
   Redo,
   Table as TableIcon,
   Palette,
+  Paperclip,
+  Video,
+  AudioLines,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -46,27 +51,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import ImageAttachmentModal from './ImageAttachmentModal';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 
-// Define MediaPart interface to match ImageAttachmentModal expectations
-interface MediaPart {
-  url: string;
-  // Add other properties if needed (e.g., id, alt, title)
-}
-
 // Extend Tiptap Image extension types to include style attribute
-declare module '@tiptap/extension-image' {
-  interface ImageOptions {
-    style?: string | null;
-  }
-
-  interface SetImageOptions {
-    src: string;
-    alt?: string;
-    title?: string;
-    style?: string;
-  }
+declare module '@tiptap/core' {
+    interface Commands<ReturnType> {
+      image: {
+        setImage: (options: { src: string; alt?: string; title?: string, style?: string }) => ReturnType,
+      }
+    }
 }
 
 type RichTextEditorProps = {
@@ -74,10 +67,10 @@ type RichTextEditorProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   variables?: string[];
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
-const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: string[] }) => {
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+const Toolbar = ({ editor, variables, onAddMedia }: { editor: Editor | null; variables?: string[], onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void }) => {
 
   if (!editor) {
     return null;
@@ -94,26 +87,17 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: str
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-  const handleImageSave = (media: MediaPart | MediaPart[] | null) => {
-    if (!media) {
-      setIsImageModalOpen(false);
-      return;
-    }
-    if (!Array.isArray(media)) {
-      // Handle single MediaPart
-      if (media?.url) {
-        editor.chain().focus().setImage({ src: media.url, style: 'width: 20%' }).run();
-      }
-    } else if (media.length > 0 && media[0]?.url) {
-      // Handle array of MediaPart (insert first image)
-      editor.chain().focus().setImage({ src: media[0].url, style: 'width: 20%' }).run();
-    }
-    setIsImageModalOpen(false);
-  };
 
   const handleVariableInsert = (variable: string) => {
     editor.chain().focus().insertContent(`{{${variable}}}`).run();
   };
+  
+  const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
+    if (onAddMedia) {
+      onAddMedia(type);
+    }
+  };
+
 
   return (
     <>
@@ -322,15 +306,6 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: str
         >
           <Unlink className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsImageModalOpen(true)}
-          title="Add Image"
-        >
-          <ImageIcon className="h-4 w-4" />
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Table options">
@@ -427,6 +402,39 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: str
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        {onAddMedia && (
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Add Media"
+                    >
+                        <Paperclip className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        <span>Image</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
+                        <Video className="mr-2 h-4 w-4" />
+                        <span>Video</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
+                        <AudioLines className="mr-2 h-4 w-4" />
+                        <span>Audio</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>Document</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+             </DropdownMenu>
+        )}
         {variables && variables.length > 0 && (
           <>
             <Separator orientation="vertical" className="h-6 mx-1" />
@@ -434,19 +442,11 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: str
           </>
         )}
       </div>
-      <ImageAttachmentModal
-        isOpen={isImageModalOpen}
-        onClose={() => setIsImageModalOpen(false)}
-        onSave={handleImageSave}
-        onDelete={() => {
-          /* Not needed for new images */
-        }}
-      />
     </>
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -465,15 +465,19 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
       Image.configure({
         inline: true,
         allowBase64: true,
-        HTMLAttributes: {
-          class: 'inline-block',
-        },
       }).extend({
         addAttributes() {
           return {
             ...this.parent?.(),
             style: {
               default: null,
+              parseHTML: element => element.getAttribute('style'),
+              renderHTML: attributes => {
+                if (!attributes.style) {
+                  return {}
+                }
+                return { style: attributes.style }
+              }
             },
           };
         },
@@ -511,15 +515,21 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     editorProps: {
       attributes: {
         class:
-          'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+          'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
       },
     },
     immediatelyRender: false,
   });
 
+  React.useEffect(() => {
+    if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
+        editor.commands.setContent(value);
+    }
+  }, [value, editor]);
+
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col">
-      <Toolbar editor={editor} variables={variables} />
+      <Toolbar editor={editor} variables={variables} onAddMedia={onAddMedia} />
       <div className="flex-grow overflow-y-auto min-h-[120px]">
         <EditorContent editor={editor} placeholder={placeholder} />
       </div>

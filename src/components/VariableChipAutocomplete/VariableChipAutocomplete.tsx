@@ -4,7 +4,6 @@ import styles from './variableChip.module.css';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Parentheses } from 'lucide-react';
 
 export default function VariableChipAutocomplete({
   variables = [],
@@ -31,8 +30,7 @@ export default function VariableChipAutocomplete({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="h-8 px-2" title={label}>
-          <Parentheses className="h-4 w-4 mr-1" />
-          Variables
+            <span className="font-mono text-base leading-none">{`{{}}`}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-60 p-0">

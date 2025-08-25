@@ -39,6 +39,7 @@ type ModalState = {
   nodeId?: string;
   data?: any;
   partId?: string;
+  callback?: (media: any) => void;
 } | null;
 
 type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio' | 'document' };
@@ -100,10 +101,10 @@ function StudioPageContent() {
     }
   }, []);
 
-  const openAttachmentModal = useCallback((nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => {
+  const openAttachmentModal = useCallback((nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document', callback: (media: any) => void) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
-    setModalState({ type, nodeId, partId, data: { parts: node.data.parts } });
+    setModalState({ type, nodeId, partId, data: { parts: node.data.parts }, callback });
   }, [nodes]);
   
   const openPropertiesForNode = useCallback((node: Node | null) => {
@@ -121,28 +122,33 @@ function StudioPageContent() {
   };
   
   const onSaveMedia = (newMedia: MediaPart | MediaPart[]) => {
-    if (!modalState || !modalState.nodeId) return;
-    const node = nodes.find(n => n.id === modalState.nodeId);
-    if (!node) return;
+    if (!modalState) return;
 
-    const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
-    let parts = [...(node.data.parts || [])];
+    if (modalState.callback) {
+        modalState.callback(newMedia);
+    } else if (modalState.nodeId) {
+        const node = nodes.find(n => n.id === modalState.nodeId);
+        if (!node) return;
 
-    if (modalState.partId) { // Editing an existing part or replacing a placeholder
-        const partIndex = parts.findIndex(p => p.id === modalState.partId);
-        if (partIndex !== -1) {
-            parts[partIndex] = { ...parts[partIndex], ...newMediaArray[0] };
-            if (newMediaArray.length > 1) {
-                const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
-                parts.splice(partIndex + 1, 0, ...additionalParts);
+        const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+        let parts = [...(node.data.parts || [])];
+
+        if (modalState.partId) { // Editing an existing part or replacing a placeholder
+            const partIndex = parts.findIndex(p => p.id === modalState.partId);
+            if (partIndex !== -1) {
+                parts[partIndex] = { ...parts[partIndex], ...newMediaArray[0] };
+                if (newMediaArray.length > 1) {
+                    const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
+                    parts.splice(partIndex + 1, 0, ...additionalParts);
+                }
             }
+        } else { // Adding new parts (e.g., from RTE image button)
+            const additionalParts = newMediaArray.map(media => ({ id: nanoid(), ...media }));
+            parts = [...parts, ...additionalParts];
         }
-    } else { // Adding new parts (e.g., from RTE image button)
-        const additionalParts = newMediaArray.map(media => ({ id: nanoid(), ...media }));
-        parts = [...parts, ...additionalParts];
-    }
 
-    updateNodeData(modalState.nodeId, { parts });
+        updateNodeData(modalState.nodeId, { parts });
+    }
     setModalState(null);
   }
   
@@ -251,7 +257,7 @@ function StudioPageContent() {
           setNodes={setNodes}
           onNodeDoubleClick={handleNodeDoubleClick}
           onOpenProperties={openPropertiesForNode}
-          onOpenAttachmentModal={openAttachmentModal}
+          onOpenAttachmentModal={openAttachmentModal as any}
           viewportKey="flow-editor-viewport"
         />
       </main>

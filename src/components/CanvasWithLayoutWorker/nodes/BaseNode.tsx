@@ -3,7 +3,7 @@ import React, {useCallback, useEffect, useRef} from 'react'
 import { Handle, Position, Node, useReactFlow } from 'reactflow'
 import styles from '../canvas-layout.module.css'
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Image as ImageIcon, Plus } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Image as ImageIcon, Plus, Paperclip } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DOMPurify from 'dompurify';
@@ -50,7 +50,7 @@ export type BaseNodeData = {
   quickReplies?: QuickReply[];
   onOpenProperties?: (node: Node) => void;
   onNodeDoubleClick?: (node: Node, options?: { partId?: string; type?: string }) => void;
-  onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
+  onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document', callback: (media: any) => void) => void;
 }
 
 // Function to migrate old data structure to the new one
@@ -67,7 +67,7 @@ function migrateData(data: BaseNodeData): ContentPart[] {
 
   // If no content or media, start with an empty text part
   if (parts.length === 0) {
-      return [];
+      return [{ id: nanoid(), type: 'text', content: '<p></p>'}];
   }
   return parts;
 }
@@ -129,83 +129,65 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         data.onNodeDoubleClick?.(thisNode);
     }
   };
-
-  const addPart = (type: ContentPart['type']) => {
-    const newPart: ContentPart = 
-        type === 'text' 
-        ? { id: nanoid(), type: 'text', content: '<p></p>' }
-        : { id: nanoid(), type, url: undefined, name: undefined};
-    const newParts = [...parts, newPart];
-    updateNodeData(id, { parts: newParts });
-
-    // If it's a media part, open the modal immediately
-    if (type !== 'text') {
-      setTimeout(() => data.onOpenAttachmentModal?.(id, newPart.id, newPart.type as any), 50);
-    }
-  };
   
-  const removePart = (partId: string) => {
-    const newParts = parts.filter(p => p.id !== partId);
-    updateNodeData(id, { parts: newParts });
-  };
-
   const updatePartContent = (partId: string, content: string) => {
     const newParts = parts.map(p => p.id === partId ? { ...p, content } : p);
     updateNodeData(id, { parts: newParts });
   }
 
-    const mediaParts = parts.filter(p => MEDIA_TYPES.includes(p.type));
     const textParts = parts.filter(p => p.type === 'text');
-    const MAX_GRID_ITEMS = 4;
-    const mediaToShow = mediaParts.slice(0, MAX_GRID_ITEMS -1);
-    const moreCount = mediaParts.length - mediaToShow.length;
+
+    const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document') => {
+        const newPartId = nanoid();
+        
+        const callback = (media: any | any[]) => {
+            const mediaArray = Array.isArray(media) ? media : [media];
+            const firstMedia = mediaArray[0];
+
+            let contentToInsert = '';
+            if (firstMedia.type === 'image') {
+                contentToInsert = `<img src="${firstMedia.url}" style="width: 20%" />`;
+            } else {
+                const typeLabel = firstMedia.type.charAt(0).toUpperCase() + firstMedia.type.slice(1);
+                contentToInsert = `<a href="${firstMedia.url}" target="_blank">[${typeLabel}: ${firstMedia.name || 'link'}]</a>`;
+            }
+
+            const currentTextPart = textParts[0]; // Assuming one text part for now
+            if (currentTextPart) {
+                const newContent = (currentTextPart.content || '<p></p>').replace(/<p><\/p>$/, '') + `<p>${contentToInsert}</p>`;
+                const newParts = parts.map(p => p.id === currentTextPart.id ? { ...p, content: newContent } : p);
+                
+                // Add other media as non-text parts if multiple files were uploaded
+                if (mediaArray.length > 1) {
+                    const additionalParts = mediaArray.slice(1).map(m => ({ id: nanoid(), ...m }));
+                    newParts.push(...additionalParts);
+                }
+                updateNodeData(id, { parts: newParts });
+            }
+        };
+
+        // This triggers the modal in StudioClientPage
+        data.onOpenAttachmentModal?.(id, newPartId, type, callback);
+    };
+
 
     const renderedParts = textParts.map(part => (
         <div key={part.id} className={styles.messagePart}>
-            <div className={styles.messageContent}>
-                <button className={styles.deletePartButton} onClick={() => removePart(part.id)} title="Delete message"><Trash2 size={14} /></button>
-                 <div className="nodrag">
-                    <RichTextEditor
-                      value={(part as any).content}
-                      onChange={(content) => updatePartContent(part.id, content)}
-                      placeholder="Type your message..."
-                      variables={['name', 'email', 'cart_item', 'order_id']}
-                    />
-                </div>
+            <div className="nodrag">
+                <RichTextEditor
+                    value={(part as any).content}
+                    onChange={(content) => updatePartContent(part.id, content)}
+                    placeholder="Type your message..."
+                    variables={['name', 'email', 'cart_item', 'order_id']}
+                    onAddMedia={handleAddMedia}
+                />
             </div>
         </div>
     ));
 
-    if (mediaParts.length > 0) {
-        renderedParts.push(
-            <div key="media-grid" className={styles.mediaGrid}>
-                {mediaToShow.map(part => (
-                    <MediaGridItem key={part.id} part={part} onDoubleClick={() => data.onOpenAttachmentModal?.(id, part.id, part.type as any)} />
-                ))}
-                {moreCount > 0 && (
-                     <div className={`${styles.mediaGridItem} ${styles.mediaGridMore}`}>
-                        +{moreCount}
-                    </div>
-                )}
-            </div>
-        )
-    }
-
     const messageBody = (
         <div className={styles.messageNodeBody}>
-            {parts.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground p-4">
-                Add content using the buttons below.
-            </div>
-            )}
             {renderedParts}
-            <div className={styles.addPartButtons}>
-                <Button variant="outline" size="sm" onClick={() => addPart('text')}><MessageSquareIcon size={16}/> Message</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('image')}><Image size={16}/> Image</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('video')}><Video size={16}/> Video</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('audio')}><AudioLines size={16}/> Audio</Button>
-                <Button variant="outline" size="sm" onClick={() => addPart('document')}><FileText size={16}/> Document</Button>
-            </div>
         </div>
     );
     
