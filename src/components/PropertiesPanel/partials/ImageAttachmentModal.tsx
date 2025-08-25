@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,14 @@ import { Label } from '@/components/ui/label';
 import { ImageIcon, FileX, Video, AudioLines, FileText } from 'lucide-react';
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 
-type MediaPart = { type: 'image' | 'video' | 'audio' | 'document', url: string, name?: string };
+type MediaPart = { type: 'image' | 'video' | 'audio' | 'document'; url: string; name?: string };
+
+// Type guard to check if media is a valid media-type ContentPart
+const isMediaPart = (
+  media: ContentPart | undefined
+): media is ContentPart & { type: 'image' | 'video' | 'audio' | 'document'; url?: string } => {
+  return media !== undefined && ['image', 'video', 'audio', 'document'].includes(media.type);
+};
 
 type ImageAttachmentModalProps = {
   isOpen: boolean;
@@ -22,7 +28,7 @@ export default function ImageAttachmentModal({
   onClose,
   onSave,
   onDelete,
-  media
+  media,
 }: ImageAttachmentModalProps) {
   const [url, setUrl] = useState('');
   const [isError, setIsError] = useState(false);
@@ -34,27 +40,30 @@ export default function ImageAttachmentModal({
     if (media?.type === 'audio') return <AudioLines className="w-16 h-16 text-muted-foreground" />;
     if (media?.type === 'document') return <FileText className="w-16 h-16 text-muted-foreground" />;
     return <ImageIcon className="w-16 h-16 text-muted-foreground" />;
-  }
-  
+  };
+
   const getAcceptType = () => {
-    switch(media?.type) {
-      case 'video': return 'video/*';
-      case 'audio': return 'audio/*';
-      case 'document': return '.pdf,.doc,.docx,.txt,.csv,.xlsx,.json';
+    switch (media?.type) {
+      case 'video':
+        return 'video/*';
+      case 'audio':
+        return 'audio/*';
+      case 'document':
+        return '.pdf,.doc,.docx,.txt,.csv,.xlsx,.json';
       case 'image':
       default:
         return 'image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.json';
     }
-  }
+  };
 
   useEffect(() => {
     if (isOpen) {
-        if (media) {
-            setUrl(media.url || '');
-        } else {
-            setUrl('');
-        }
-        setIsError(false);
+      if (isMediaPart(media)) {
+        setUrl(media.url || '');
+      } else {
+        setUrl('');
+      }
+      setIsError(false);
     }
   }, [media, isOpen]);
 
@@ -62,10 +71,9 @@ export default function ImageAttachmentModal({
     setIsError(false);
   }, [url]);
 
-
   const handleSave = () => {
     if (!url) return;
-    const type = media?.type || 'image';
+    const type: MediaPart['type'] = isMediaPart(media) ? media.type : 'image';
     onSave({ type, url });
     onClose();
   };
@@ -77,87 +85,100 @@ export default function ImageAttachmentModal({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    
+
     const newParts: MediaPart[] = [];
     let processedCount = 0;
 
     const determineType = (fileType: string): MediaPart['type'] => {
-        if (fileType.startsWith('image/')) return 'image';
-        if (fileType.startsWith('video/')) return 'video';
-        if (fileType.startsWith('audio/')) return 'audio';
-        return 'document';
-    }
+      if (fileType.startsWith('image/')) return 'image';
+      if (fileType.startsWith('video/')) return 'video';
+      if (fileType.startsWith('audio/')) return 'audio';
+      return 'document';
+    };
 
-    Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const partType = determineType(file.type);
-            newParts.push({ type: partType, url: e.target?.result as string, name: file.name });
-            processedCount++;
-            if (processedCount === files.length) {
-                onSave(newParts);
-                onClose();
-            }
-        };
-        reader.readAsDataURL(file);
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const partType = determineType(file.type);
+        newParts.push({ type: partType, url: e.target?.result as string, name: file.name });
+        processedCount++;
+        if (processedCount === files.length) {
+          onSave(newParts);
+          onClose();
+        }
+      };
+      reader.readAsDataURL(file);
     });
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Attach Media</DialogTitle>
-          <DialogDescription>Add an image, video, audio, or document to your message. Provide a URL or upload files.</DialogDescription>
+          <DialogDescription>
+            Add an image, video, audio, or document to your message. Provide a URL or upload files.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-            <div className="flex items-center justify-center h-48 bg-muted rounded-md overflow-hidden">
-                {url && !isError ? 
-                    (
-                      media?.type === 'image' ?
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img 
-                        src={url} 
-                        alt="Image preview" 
-                        width={200} 
-                        height={200} 
-                        className="object-contain max-h-full"
-                        onError={() => setIsError(true)}
-                        data-ai-hint="product photo"
-                      /> 
-                      : getIcon()
-                    )
-                    : getIcon()
-                }
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="image-url">Media URL</Label>
-                <Input id="image-url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://placehold.co/600x400.png" />
-            </div>
-            <div className="text-center text-sm text-muted-foreground">or</div>
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept={getAcceptType()}
-                multiple
+          <div className="flex items-center justify-center h-48 bg-muted rounded-md overflow-hidden">
+            {url && !isError && isMediaPart(media) ? (
+              media.type === 'image' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={url}
+                  alt="Image preview"
+                  width={200}
+                  height={200}
+                  className="object-contain max-h-full"
+                  onError={() => setIsError(true)}
+                  data-ai-hint="product photo"
+                />
+              ) : (
+                getIcon()
+              )
+            ) : (
+              getIcon()
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="image-url">Media URL</Label>
+            <Input
+              id="image-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://placehold.co/600x400.png"
             />
-            <Button variant="outline" type="button" onClick={handleUploadClick}>Upload from device</Button>
+          </div>
+          <div className="text-center text-sm text-muted-foreground">or</div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept={getAcceptType()}
+            multiple
+          />
+          <Button variant="outline" type="button" onClick={handleUploadClick}>
+            Upload from device
+          </Button>
         </div>
         <DialogFooter className="justify-between">
-            <div>
-              {media && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button onClick={handleSave} disabled={!url || isError}>Save</Button>
-            </div>
+          <div>
+            {isMediaPart(media) && (
+              <Button variant="destructive" onClick={onDelete}>
+                Delete Attachment
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleSave} disabled={!url || isError}>
+              Save
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -39,7 +38,7 @@ import {
   Paperclip,
   Video,
   AudioLines,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,15 +52,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 
-// Extend Tiptap Image extension types to include style attribute
-declare module '@tiptap/core' {
-    interface Commands<ReturnType> {
-      image: {
-        setImage: (options: { src: string; alt?: string; title?: string, style?: string }) => ReturnType,
-      }
-    }
-}
-
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
@@ -70,8 +60,15 @@ type RichTextEditorProps = {
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
-const Toolbar = ({ editor, variables, onAddMedia }: { editor: Editor | null; variables?: string[], onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void }) => {
-
+const Toolbar = ({
+  editor,
+  variables,
+  onAddMedia,
+}: {
+  editor: Editor | null;
+  variables?: string[];
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
+}) => {
   if (!editor) {
     return null;
   }
@@ -87,17 +84,15 @@ const Toolbar = ({ editor, variables, onAddMedia }: { editor: Editor | null; var
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-
   const handleVariableInsert = (variable: string) => {
     editor.chain().focus().insertContent(`{{${variable}}}`).run();
   };
-  
+
   const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
     if (onAddMedia) {
       onAddMedia(type);
     }
   };
-
 
   return (
     <>
@@ -403,37 +398,31 @@ const Toolbar = ({ editor, variables, onAddMedia }: { editor: Editor | null; var
           </DropdownMenuContent>
         </DropdownMenu>
         {onAddMedia && (
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Add Media"
-                    >
-                        <Paperclip className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
-                        <ImageIcon className="mr-2 h-4 w-4" />
-                        <span>Image</span>
-                    </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
-                        <Video className="mr-2 h-4 w-4" />
-                        <span>Video</span>
-                    </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
-                        <AudioLines className="mr-2 h-4 w-4" />
-                        <span>Audio</span>
-                    </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span>Document</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-             </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
+                <Paperclip className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                <span>Image</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
+                <Video className="mr-2 h-4 w-4" />
+                <span>Video</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
+                <AudioLines className="mr-2 h-4 w-4" />
+                <span>Audio</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Document</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {variables && variables.length > 0 && (
           <>
@@ -471,13 +460,13 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
             ...this.parent?.(),
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) {
-                  return {}
+                  return {};
                 }
-                return { style: attributes.style }
-              }
+                return { style: attributes.style };
+              },
             },
           };
         },
@@ -523,7 +512,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
 
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-        editor.commands.setContent(value);
+      editor.commands.setContent(value);
     }
   }, [value, editor]);
 
