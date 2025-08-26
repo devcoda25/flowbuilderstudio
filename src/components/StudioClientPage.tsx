@@ -81,12 +81,13 @@ function StudioPageContent() {
 
   engine.setFlow(nodes, edges);
 
-  const handleNodeDoubleClick = useCallback((node: Node, options?: { partId?: string, type?: string }) => {
+  const handleNodeDoubleClick = useCallback((node: Node, options?: { partId?: string; type?: string }) => {
     const nodeType = node.data?.type;
     const nodeLabel = node.data?.label;
 
     if (nodeLabel === 'Send a Message') {
-        setModalState({ type: 'message', nodeId: node.id, data: { content: node.data.content } });
+        const textPart = (node.data.parts || []).find((p: any) => p.type === 'text');
+        setModalState({ type: 'message', nodeId: node.id, data: { content: textPart?.content || '', parts: node.data.parts } });
         return;
     }
 
@@ -135,7 +136,17 @@ function StudioPageContent() {
   
   const onSaveModal = (data: any) => {
     if (!modalState || !modalState.nodeId) return;
-    updateNodeData(modalState.nodeId, data);
+
+    if (modalState.type === 'message') {
+        const node = nodes.find(n => n.id === modalState.nodeId);
+        if (!node) return;
+        const otherParts = (node.data.parts || []).filter((p: any) => p.type !== 'text');
+        const textPart = (node.data.parts || []).find((p: any) => p.type === 'text') || { id: nanoid(), type: 'text' };
+        const newParts = [{...textPart, content: data.content }, ...otherParts];
+        updateNodeData(modalState.nodeId, { ...data, parts: newParts });
+    } else {
+        updateNodeData(modalState.nodeId, data);
+    }
     setModalState(null);
   };
   
@@ -196,6 +207,7 @@ function StudioPageContent() {
       data: { 
         label: item.label, 
         icon: item.icon,
+        type: item.type,
         color: item.color || getRandomColor(),
         description: item.description,
         content: item.content,
@@ -299,15 +311,19 @@ function StudioPageContent() {
         onSave={onSaveModal}
         initialData={modalState?.data}
         onAddMedia={(type) => {
-            setModalState(s => s ? { ...s, type: type as any, callback: (newMedia: MediaPart) => {
-                if (s.nodeId) {
-                    const node = nodes.find(n => n.id === s.nodeId);
+            const partId = nanoid();
+            setModalState(s => {
+                if (!s) return null;
+                const callback = (newMedia: MediaPart) => {
+                    const node = useFlowStore.getState().nodes.find(n => n.id === s.nodeId);
                     if (node) {
-                        const newParts = [...(node.data.parts || []), { id: nanoid(), ...newMedia }];
-                        updateNodeData(s.nodeId, { parts: newParts });
+                        const newPart = { id: partId, ...newMedia };
+                        const newParts = [...(node.data.parts || []), newPart];
+                        updateNodeData(s.nodeId!, { parts: newParts });
                     }
-                }
-            } } : null);
+                };
+                return { ...s, type: type as any, partId, callback };
+            });
         }}
       />
        <QuestionModal

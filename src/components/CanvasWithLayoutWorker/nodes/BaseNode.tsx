@@ -88,6 +88,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const { getNode } = useReactFlow();
 
   const migratedData = useMemo(() => migrateData(data), [data]);
+  const parts = migratedData.parts || [];
 
   const customStyle = {
     '--node-color': data.color || 'hsl(var(--primary))',
@@ -113,13 +114,48 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const handleDoubleClick = (partId?: string, type?: string) => {
     if (!thisNode) return;
-    data.onNodeDoubleClick?.(thisNode);
+    data.onNodeDoubleClick?.(thisNode, { partId, type });
   };
 
   const updateButtonLabel = (buttonId: string, newLabel: string) => {
     const newReplies = (data.quickReplies || []).map((qr) => (qr.id === buttonId ? { ...qr, label: newLabel } : qr));
     updateNodeData(id, { quickReplies: newReplies });
   };
+
+  const messageBody = (
+    <div className={styles.messageNodeBody}>
+        {parts.map((part) => {
+            if (part.type === 'text') {
+                const sanitizedHtml = DOMPurify.sanitize(part.content);
+                return (
+                    <div
+                        key={part.id}
+                        className={styles.messageContent}
+                        dangerouslySetInnerHTML={{ __html: sanitizedHtml || '<p class="text-muted-foreground">Double-click to add text</p>' }}
+                        onClick={() => handleDoubleClick(part.id, 'text')}
+                    />
+                );
+            }
+            if (MEDIA_TYPES.includes(part.type)) {
+                return (
+                    <div key={part.id} className={styles.mediaGrid}>
+                        <div
+                            className={styles.mediaGridItem}
+                            onClick={() => data.onOpenAttachmentModal?.(id, part.id, part.type)}
+                        >
+                            {part.type === 'image' && part.url && <img src={part.url} alt={part.name || 'attachment'} className={styles.mediaGridImage} data-ai-hint="product photo" />}
+                            {part.type === 'video' && <Video className="w-8 h-8" />}
+                            {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
+                            {part.type === 'document' && getFileIcon(part.name)}
+                        </div>
+                    </div>
+                );
+            }
+            return null;
+        })}
+        {parts.length === 0 && <p className="text-muted-foreground">Double-click to configure.</p>}
+    </div>
+  );
     
   const buttonsBody = (
     <div className={styles.buttonsNodeBody} onDoubleClick={() => handleDoubleClick()}>
@@ -220,9 +256,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       </div>
       <div className={styles.nodeBody}>
         {isMessageNode ? (
-            <p>{data.description || 'Double-click to configure.'}</p>
+            messageBody
         ) : isAskQuestionNode ? (
-          <p>{data.description || 'Ask a question here'}</p>
+            <p>{data.content || 'Ask a question here'}</p>
         ) : isConditionNode ? (
           <div className={styles.conditionBody}>
             {hasConditions ? (

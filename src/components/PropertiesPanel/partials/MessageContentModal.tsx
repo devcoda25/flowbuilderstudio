@@ -14,7 +14,7 @@ type MessageContentModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: { content: string }) => void;
-  initialData?: { content: string };
+  initialData?: { content: string; parts?: any[] };
   onAddMedia: (type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
@@ -55,6 +55,7 @@ export default function MessageContentModal({
                   onChange={setText}
                   placeholder="Type your message here..."
                   onAddMedia={onAddMedia}
+                  variables={['name', 'email', 'order_id']}
               />
           </div>
         </div>
