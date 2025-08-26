@@ -1,13 +1,12 @@
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Handle, Position, Node, useReactFlow } from 'reactflow';
 import styles from '../canvas-layout.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Image as ImageIcon, Plus, Paperclip, Music, FileQuestion, FileSpreadsheet, FileJson } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image as ImageIcon, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import DOMPurify from 'dompurify';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +18,14 @@ import { useFlowStore } from '@/store/flow';
 import { Badge } from '@/components/ui/badge';
 import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
+import dynamic from 'next/dynamic';
+import { useClickAway } from 'react-use';
+
+const RichTextEditor = dynamic(() => import('@/components/PropertiesPanel/partials/RichTextEditor'), { 
+    ssr: false,
+    loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
+});
+
 
 export type ContentPart =
   | { id: string; type: 'text'; content: string }
@@ -86,9 +93,15 @@ const getFileIcon = (fileName?: string) => {
 export default function BaseNode({ id, data, selected }: { id: string; data: BaseNodeData; selected: boolean }) {
   const { deleteNode, duplicateNode, setStartNode, startNodeId, updateNodeData, nodes } = useFlowStore();
   const { getNode } = useReactFlow();
+  const [isEditing, setIsEditing] = useState(false);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const isOpeningModal = useRef(false);
 
   const migratedData = useMemo(() => migrateData(data), [data]);
   const parts = migratedData.parts || [];
+  const textPart = useMemo(() => parts.find(p => p.type === 'text') || { id: nanoid(), type: 'text', content: '' }, [parts]);
+  const mediaParts = useMemo(() => parts.filter(p => MEDIA_TYPES.includes(p.type)), [parts]);
+
 
   const customStyle = {
     '--node-color': data.color || 'hsl(var(--primary))',
@@ -103,6 +116,17 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const isListNode = data.label === 'List';
   const isStartNode = startNodeId === id;
 
+  useClickAway(nodeRef, () => {
+    if (isMessageNode && isEditing && !isOpeningModal.current) {
+        setIsEditing(false);
+    }
+    if (isOpeningModal.current) {
+        // Reset after a short delay to allow the modal to open
+        setTimeout(() => { isOpeningModal.current = false; }, 100);
+    }
+  });
+
+
   const getConditionString = (condition: { variable?: string; operator?: string; value?: string }): string => {
     if (!condition) return '';
     return `${condition.variable || ''} ${condition.operator || ''} ${condition.value || ''}`;
@@ -114,6 +138,10 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const handleDoubleClick = (partId?: string, type?: string) => {
     if (!thisNode) return;
+    if (isMessageNode) {
+        setIsEditing(true);
+        return;
+    }
     data.onNodeDoubleClick?.(thisNode, { partId, type });
   };
 
@@ -121,39 +149,61 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     const newReplies = (data.quickReplies || []).map((qr) => (qr.id === buttonId ? { ...qr, label: newLabel } : qr));
     updateNodeData(id, { quickReplies: newReplies });
   };
+  
+  const handleContentChange = (content: string) => {
+      const otherParts = parts.filter(p => p.type !== 'text');
+      const newParts = [{ ...textPart, content }, ...otherParts];
+      updateNodeData(id, { parts: newParts });
+  };
+  
+  const handleDeletePart = (partId: string) => {
+      const newParts = parts.filter(p => p.id !== partId);
+      updateNodeData(id, { parts: newParts });
+  }
+
+  const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document') => {
+      isOpeningModal.current = true;
+      data.onOpenAttachmentModal?.(id, nanoid(), type);
+  }
+
+  const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
+    isOpeningModal.current = true;
+    data.onOpenAttachmentModal?.(id, partId, type as any);
+  };
 
   const messageBody = (
     <div className={styles.messageNodeBody}>
-        {parts.map((part) => {
-            if (part.type === 'text') {
-                const sanitizedHtml = DOMPurify.sanitize(part.content);
-                return (
+        {isEditing ? (
+            <RichTextEditor 
+                value={textPart.content}
+                onChange={handleContentChange}
+                variables={['name', 'email', 'order_id']}
+                onAddMedia={handleAddMedia}
+            />
+        ) : (
+             <div onClick={() => setIsEditing(true)} className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px]" dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }} />
+        )}
+        
+        {mediaParts.length > 0 && (
+            <div className={styles.mediaGrid}>
+                {mediaParts.map(part => (
                     <div
                         key={part.id}
-                        className={styles.messageContent}
-                        dangerouslySetInnerHTML={{ __html: sanitizedHtml || '<p class="text-muted-foreground">Double-click to add text</p>' }}
-                        onClick={() => handleDoubleClick(part.id, 'text')}
-                    />
-                );
-            }
-            if (MEDIA_TYPES.includes(part.type)) {
-                return (
-                    <div key={part.id} className={styles.mediaGrid}>
-                        <div
-                            className={styles.mediaGridItem}
-                            onClick={() => data.onOpenAttachmentModal?.(id, part.id, part.type)}
-                        >
-                            {part.type === 'image' && part.url && <img src={part.url} alt={part.name || 'attachment'} className={styles.mediaGridImage} data-ai-hint="product photo" />}
-                            {part.type === 'video' && <Video className="w-8 h-8" />}
-                            {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
-                            {part.type === 'document' && getFileIcon(part.name)}
-                        </div>
+                        className={styles.mediaGridItem}
+                        onClick={() => handleOpenAttachment(part.id, part.type)}
+                        title={`Edit ${part.name || part.type}`}
+                    >
+                        {part.type === 'image' && part.url && <img src={part.url} alt={part.name || 'attachment'} className={styles.mediaGridImage} data-ai-hint="product photo" />}
+                        {part.type === 'video' && <Video className="w-8 h-8" />}
+                        {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
+                        {part.type === 'document' && getFileIcon(part.name)}
+                         <button onClick={(e) => {e.stopPropagation(); handleDeletePart(part.id)}} className={styles.deletePartButton}>
+                           <Trash2 size={12} />
+                         </button>
                     </div>
-                );
-            }
-            return null;
-        })}
-        {parts.length === 0 && <p className="text-muted-foreground">Double-click to configure.</p>}
+                ))}
+            </div>
+        )}
     </div>
   );
     
@@ -205,9 +255,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   );
 
   return (
-    <div className={styles.baseNode} style={customStyle} aria-selected={selected} onDoubleClick={() => handleDoubleClick()}>
+    <div ref={nodeRef} className={styles.baseNode} style={customStyle} aria-selected={selected}>
       <NodeAvatars nodeId={id} />
-      <div className={styles.nodeHeader}>
+      <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
         <div className={styles.headerLeft}>
           <span className={styles.nodeIconWrapper}>
             <Icon className={styles.nodeIcon} aria-hidden="true" />
@@ -258,9 +308,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         {isMessageNode ? (
             messageBody
         ) : isAskQuestionNode ? (
-            <p>{data.content || 'Ask a question here'}</p>
+            <p onDoubleClick={() => handleDoubleClick()}>{data.content || 'Ask a question here'}</p>
         ) : isConditionNode ? (
-          <div className={styles.conditionBody}>
+          <div className={styles.conditionBody} onDoubleClick={() => handleDoubleClick()}>
             {hasConditions ? (
               data.groups?.map((group, groupIndex) => (
                 <React.Fragment key={groupIndex}>
@@ -285,7 +335,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         ) : isListNode ? (
           listBody
         ) : (
-          <p>{data.description || 'Double-click to configure.'}</p>
+          <p onDoubleClick={() => handleDoubleClick()}>{data.description || 'Double-click to configure.'}</p>
         )}
       </div>
 
@@ -331,3 +381,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     </div>
   );
 }
+    
+
+    

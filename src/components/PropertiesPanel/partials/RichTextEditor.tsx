@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -40,7 +40,6 @@ import {
   Video,
   AudioLines,
   FileText,
-  Code,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -519,3 +518,5 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     </div>
   );
 }
+
+    

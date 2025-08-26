@@ -86,8 +86,7 @@ function StudioPageContent() {
     const nodeLabel = node.data?.label;
 
     if (nodeLabel === 'Send a Message') {
-        const textPart = (node.data.parts || []).find((p: any) => p.type === 'text');
-        setModalState({ type: 'message', nodeId: node.id, data: { content: textPart?.content || '', parts: node.data.parts } });
+        // The editor is now inline, so double-click is used to enter edit mode in BaseNode.
         return;
     }
 
@@ -151,38 +150,42 @@ function StudioPageContent() {
   };
   
   const onSaveMedia = (newMedia: MediaPart | MediaPart[]) => {
-    if (!modalState) return;
+    if (!modalState || !modalState.nodeId || !modalState.partId) return;
 
-    if (modalState.callback) {
-        modalState.callback(newMedia);
-    } else if (modalState.nodeId) {
-        const node = nodes.find(n => n.id === modalState.nodeId);
-        if (!node) return;
+    const node = nodes.find(n => n.id === modalState.nodeId);
+    if (!node) return;
 
-        const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
-        let parts = [...(node.data.parts || [])];
+    const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
+    
+    // Check if we are editing an existing part or adding a new one
+    const existingPartIndex = (node.data.parts || []).findIndex((p: ContentPart) => p.id === modalState.partId);
 
-        if (modalState.partId) { // Editing an existing part or adding a new part
-            const partIndex = parts.findIndex(p => p.id === modalState.partId);
-            if (partIndex !== -1) {
-                // This is an edit
-                parts[partIndex] = { ...parts[partIndex], ...newMediaArray[0] };
-                if (newMediaArray.length > 1) {
-                    const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
-                    parts.splice(partIndex + 1, 0, ...additionalParts);
-                }
-            } else {
-                // The partId was for a new part, so add it
-                const partToAdd = { id: modalState.partId, ...newMediaArray[0] };
-                const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
-                parts = [...parts, partToAdd, ...additionalParts];
-            }
+    let newParts: ContentPart[];
+
+    if (existingPartIndex > -1) {
+        // Editing existing part
+        newParts = [...(node.data.parts || [])];
+        newParts[existingPartIndex] = { ...newParts[existingPartIndex], ...newMediaArray[0] };
+        
+        // If multiple files were uploaded while editing, add the rest as new parts
+        if (newMediaArray.length > 1) {
+            const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
+            newParts.splice(existingPartIndex + 1, 0, ...additionalParts);
         }
-
-        updateNodeData(modalState.nodeId, { parts });
+    } else {
+        // Adding new part(s)
+        const partsToAdd = newMediaArray.map((media, index) => {
+            // Use the partId from the modal state for the first item, generate new ones for the rest
+            const id = index === 0 ? modalState.partId! : nanoid();
+            return { id, ...media };
+        });
+        newParts = [...(node.data.parts || []), ...partsToAdd];
     }
+    
+    updateNodeData(modalState.nodeId, { parts: newParts });
     setModalState(null);
-  }
+}
+
   
   const onDeleteMedia = () => {
     if (!modalState || !modalState.partId || !modalState.nodeId) return;
@@ -421,3 +424,5 @@ export default function StudioClientPage() {
         </ReactFlowProvider>
     )
 }
+
+    

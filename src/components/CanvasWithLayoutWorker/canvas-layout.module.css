@@ -6,6 +6,7 @@
 
 
 
+
 .root { 
   position: relative; 
   height: 100%; 
@@ -193,6 +194,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 0px !important;
 }
 
 .messagePart {
@@ -232,8 +234,7 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     max-width: 200px;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 12px auto;
 }
 
 .mediaGridItem {
@@ -267,14 +268,14 @@
 
 .deletePartButton {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
   border-radius: 999px;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -282,7 +283,7 @@
   opacity: 0;
   transition: opacity 0.2s;
 }
-.messagePart:hover .deletePartButton {
+.mediaGridItem:hover .deletePartButton {
   opacity: 1;
 }
 
@@ -295,9 +296,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid hsl(var(--border));
-  margin-top: 8px;
+  padding: 12px;
 }
 .addPartButtons > button {
     background-color: hsl(var(--primary) / 0.1);
