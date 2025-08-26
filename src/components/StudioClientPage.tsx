@@ -44,7 +44,6 @@ type ModalState = {
   nodeId?: string;
   data?: any;
   partId?: string;
-  callback?: (media: any) => void;
 } | null;
 
 type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio' | 'document' };
@@ -55,7 +54,7 @@ function StudioPageContent() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
-  const { saveFlow, createNewFlow, deleteFlow, flows } = useFlowsStore();
+  const { saveFlow, createNewFlow, deleteFlow, flows, activeFlow } = useFlowsStore();
   const { toast } = useToast();
 
   const { isTestConsoleOpen, toggleTestConsole } = useUIStore();
@@ -68,16 +67,14 @@ function StudioPageContent() {
 
   useEffect(() => {
     // When the active flow changes in the store, update the canvas
-    const unsub = useFlowsStore.subscribe((state, prevState) => {
-        if (state.activeFlowId !== prevState.activeFlowId && state.activeFlow) {
-            const { nodes, edges, ...meta } = state.activeFlow;
-            setNodes(nodes);
-            setEdges(edges);
-            setMeta(meta);
-        }
-    });
-    return unsub;
-  }, [setNodes, setEdges, setMeta]);
+    if (activeFlow) {
+        const { nodes, edges, ...meta } = activeFlow;
+        setNodes(nodes);
+        setEdges(edges);
+        setMeta(meta);
+    }
+  }, [activeFlow?.id, setNodes, setEdges, setMeta, activeFlow]);
+
 
   engine.setFlow(nodes, edges);
 
@@ -135,17 +132,7 @@ function StudioPageContent() {
   
   const onSaveModal = (data: any) => {
     if (!modalState || !modalState.nodeId) return;
-
-    if (modalState.type === 'message') {
-        const node = nodes.find(n => n.id === modalState.nodeId);
-        if (!node) return;
-        const otherParts = (node.data.parts || []).filter((p: any) => p.type !== 'text');
-        const textPart = (node.data.parts || []).find((p: any) => p.type === 'text') || { id: nanoid(), type: 'text' };
-        const newParts = [{...textPart, content: data.content }, ...otherParts];
-        updateNodeData(modalState.nodeId, { ...data, parts: newParts });
-    } else {
-        updateNodeData(modalState.nodeId, data);
-    }
+    updateNodeData(modalState.nodeId, data);
     setModalState(null);
   };
   
@@ -157,25 +144,20 @@ function StudioPageContent() {
 
     const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
     
-    // Check if we are editing an existing part or adding a new one
     const existingPartIndex = (node.data.parts || []).findIndex((p: ContentPart) => p.id === modalState.partId);
 
     let newParts: ContentPart[];
 
     if (existingPartIndex > -1) {
-        // Editing existing part
         newParts = [...(node.data.parts || [])];
         newParts[existingPartIndex] = { ...newParts[existingPartIndex], ...newMediaArray[0] };
         
-        // If multiple files were uploaded while editing, add the rest as new parts
         if (newMediaArray.length > 1) {
             const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
             newParts.splice(existingPartIndex + 1, 0, ...additionalParts);
         }
     } else {
-        // Adding new part(s)
         const partsToAdd = newMediaArray.map((media, index) => {
-            // Use the partId from the modal state for the first item, generate new ones for the rest
             const id = index === 0 ? modalState.partId! : nanoid();
             return { id, ...media };
         });
@@ -215,6 +197,7 @@ function StudioPageContent() {
         description: item.description,
         content: item.content,
         quickReplies: item.quickReplies,
+        list: item.list,
       },
     };
     addNode(newNode);
@@ -312,20 +295,13 @@ function StudioPageContent() {
         isOpen={modalState?.type === 'message'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
         onAddMedia={(type) => {
             const partId = nanoid();
             setModalState(s => {
-                if (!s) return null;
-                const callback = (newMedia: MediaPart) => {
-                    const node = useFlowStore.getState().nodes.find(n => n.id === s.nodeId);
-                    if (node) {
-                        const newPart = { id: partId, ...newMedia };
-                        const newParts = [...(node.data.parts || []), newPart];
-                        updateNodeData(s.nodeId!, { parts: newParts });
-                    }
-                };
-                return { ...s, type: type as any, partId, callback };
+                if (!s?.nodeId) return null;
+                openAttachmentModal(s.nodeId, partId, type);
+                return s; // Keep the message modal open
             });
         }}
       />
@@ -333,19 +309,19 @@ function StudioPageContent() {
         isOpen={modalState?.type === 'question'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
        <ButtonsModal
         isOpen={modalState?.type === 'buttons'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <ListModal
         isOpen={modalState?.type === 'list'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <FlowsModal
         isOpen={modalState?.type === 'flows'}
@@ -383,31 +359,31 @@ function StudioPageContent() {
           isOpen={modalState?.type === 'webhook'}
           onClose={() => setModalState(null)}
           onSave={onSaveModal}
-          initialData={modalState?.data}
+          initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <ConditionModal
         isOpen={modalState?.type === 'condition'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <GoogleSheetsModal
           isOpen={modalState?.type === 'googleSheets'}
           onClose={() => setModalState(null)}
           onSave={onSaveModal}
-          initialData={modalState?.data}
+          initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <AssignUserModal
         isOpen={modalState?.type === 'assignUser'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
       <AssignTeamModal
         isOpen={modalState?.type === 'assignTeam'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.data}
+        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
       />
 
 
@@ -424,5 +400,3 @@ export default function StudioClientPage() {
         </ReactFlowProvider>
     )
 }
-
-    

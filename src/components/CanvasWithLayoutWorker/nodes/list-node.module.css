@@ -1,3 +1,4 @@
+
 .body {
     @apply p-0 flex flex-col;
 }
@@ -33,7 +34,7 @@
 }
 
 .item {
-    @apply bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between relative mx-3;
+    @apply bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between relative mx-3 px-3 py-2;
 }
 .item:last-child {
     @apply border-b-0 rounded-b-md;
@@ -51,16 +52,16 @@
 }
 
 .handle {
-    width: 12px !important;
-    height: 12px !important;
-    background: #22c55e !important; /* green-500 */
-    border-radius: 999px !important;
-    border: 2px solid #f3f4f6 !important; /* bg-gray-100 */
-    right: 12px !important;
-    position: absolute !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    box-shadow: 0 0 0 1px #e5e7eb; /* border-gray-200 */
+  width: 12px !important;
+  height: 12px !important;
+  background: hsl(var(--accent)) !important;
+  border: 2px solid hsl(var(--muted)) !important;
+  border-radius: 999px !important;
+  right: -6px !important;
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .buttons {
@@ -68,5 +69,5 @@
 }
 
 .listButton {
-    @apply w-full;
+    @apply w-full relative bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 rounded-md flex justify-center items-center;
 }

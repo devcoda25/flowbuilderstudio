@@ -66,6 +66,7 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: str
   );
 };
 
+
 export default function SimpleTextEditor({
   value,
   onChange,
@@ -100,7 +101,7 @@ export default function SimpleTextEditor({
 
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(value, false);
     }
   }, [value, editor]);
 

@@ -40,7 +40,7 @@ export type QuickReply = { id: string; label: string };
 
 type ListItem = { id: string; title: string; description?: string };
 type ListSection = { id: string; title: string; items: ListItem[] };
-type ListData = { menuButtonText: string; sections: ListSection[] };
+type ListData = { content?: string, menuButtonText?: string; sections?: ListSection[] };
 
 export type BaseNodeData = {
   label: string;
@@ -62,14 +62,12 @@ export type BaseNodeData = {
 
 const MEDIA_TYPES: ContentPart['type'][] = ['image', 'video', 'audio', 'document'];
 
-// Type guard to check if ContentPart is a media type
 const isMediaPart = (
   part: ContentPart
 ): part is ContentPart & { type: 'image' | 'video' | 'audio' | 'document'; url?: string; name?: string } => {
   return MEDIA_TYPES.includes(part.type);
 };
 
-// Ensure old `content` field is migrated to new `parts` structure
 const migrateData = (data: BaseNodeData): BaseNodeData => {
   if (typeof data.content === 'string' && !data.parts) {
     return { ...data, parts: [{ id: nanoid(), type: 'text', content: data.content }] };
@@ -107,7 +105,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const migratedData = useMemo(() => migrateData(data), [data]);
   const parts = migratedData.parts || [];
-  const textPart = useMemo(() => parts.find(p => p.type === 'text') || { id: nanoid(), type: 'text', content: '' }, [parts]);
+  const textPart = useMemo(() => parts.find(p => p.type === 'text') as ContentPart & { type: 'text' } || { id: nanoid(), type: 'text', content: '' }, [parts]);
   const mediaParts = useMemo(() => parts.filter(p => MEDIA_TYPES.includes(p.type)), [parts]);
 
   const customStyle = {
@@ -122,33 +120,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const isButtonsNode = data.label === 'Buttons';
   const isListNode = data.label === 'List';
   const isStartNode = startNodeId === id;
-
-  // Handle canvas clicks to close the editor
-  useEffect(() => {
-    if (!isMessageNode || !nodeRef.current) return;
-
-    const handleCanvasClick = (event: MouseEvent) => {
-      if (isEditing && !isOpeningModal.current) {
-        const target = event.target as HTMLElement;
-        if (!nodeRef.current?.contains(target)) {
-          setIsEditing(false);
-        }
-      }
-    };
-
-    const canvas = document.querySelector('.react-flow__viewport') as HTMLElement | null;
-    if (canvas) {
-      canvas.addEventListener('click', handleCanvasClick as EventListener);
-      return () => canvas.removeEventListener('click', handleCanvasClick as EventListener);
-    }
-  }, [isEditing, isMessageNode]);
-
-  // Fallback click-away handler for non-canvas elements
-  useClickAway(nodeRef, () => {
-    if (isMessageNode && isEditing && !isOpeningModal.current) {
-      setIsEditing(false);
-    }
-  });
 
   const getConditionString = (condition: { variable?: string; operator?: string; value?: string }): string => {
     if (!condition) return '';
@@ -167,6 +138,13 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     }
     data.onNodeDoubleClick?.(thisNode, { partId, type });
   };
+  
+   useClickAway(nodeRef, () => {
+    if (isMessageNode && isEditing && !isOpeningModal.current) {
+        setIsEditing(false);
+    }
+  });
+
 
   const updateButtonLabel = (buttonId: string, newLabel: string) => {
     const newReplies = (data.quickReplies || []).map((qr) => (qr.id === buttonId ? { ...qr, label: newLabel } : qr));
@@ -187,35 +165,19 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document') => {
     isOpeningModal.current = true;
     data.onOpenAttachmentModal?.(id, nanoid(), type);
-    setTimeout(() => { isOpeningModal.current = false; }, 100);
+    setTimeout(() => { isOpeningModal.current = false; }, 500); // Reset after a delay
   };
 
   const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
     if (isMediaPart({ id: partId, type } as ContentPart)) {
       isOpeningModal.current = true;
       data.onOpenAttachmentModal?.(id, partId, type as 'image' | 'video' | 'audio' | 'document');
-      setTimeout(() => { isOpeningModal.current = false; }, 100);
-    }
-  };
-
-  // Handle clicks on the node to open the editor for messaging nodes
-  const handleNodeClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!isMessageNode || isEditing) return;
-
-    // Check if the click target is an interactive element
-    const target = event.target as HTMLElement;
-    const isInteractive = target.closest(
-      `.${styles.nodeMore}, .${styles.mediaGridItem}, .${styles.deletePartButton}, .${listNodeStyles.listButton}`
-    );
-
-    if (!isInteractive) {
-      event.stopPropagation(); // Prevent canvas click from closing immediately
-      setIsEditing(true);
+      setTimeout(() => { isOpeningModal.current = false; }, 500); // Reset after a delay
     }
   };
 
   const messageBody = (
-    <div className={styles.messageNodeBody}>
+    <div className={styles.messageNodeBody} onClick={() => !isEditing && setIsEditing(true)}>
       {isEditing ? (
         <RichTextEditor
           value={textPart.content}
@@ -224,12 +186,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
           onAddMedia={handleAddMedia}
         />
       ) : (
-        <div
-          className="w-full cursor-text"
-          onDoubleClick={() => handleDoubleClick()}
-        >
+        <>
           <div
-            className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px]"
+            className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px] cursor-text"
             dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
           />
           {mediaParts.length > 0 && (
@@ -259,7 +218,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
@@ -272,12 +231,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       <div className={styles.buttonsList}>
         {(data.quickReplies || []).map((branch: QuickReply, index: number) => (
           <div key={branch.id} className={styles.buttonItem}>
-            <Input
-              value={branch.label}
-              onChange={(e) => updateButtonLabel(branch.id, e.target.value)}
-              placeholder={`Button ${index + 1}`}
-              className={styles.buttonInput}
-            />
+            <span>{branch.label || `Button ${index + 1}`}</span>
             <Handle type="source" position={Position.Right} id={branch.id} className={styles.buttonHandle} />
           </div>
         ))}
@@ -288,13 +242,13 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const listBody = (
     <div className={listNodeStyles.body} onDoubleClick={() => handleDoubleClick()}>
       <div className={listNodeStyles.bodyInput}>
-        {data.content || 'default body'}
+        {data.list?.content || 'default body'}
       </div>
       <div className={`${listNodeStyles.sections} nodrag`}>
-        {(data.list?.sections || []).map((section, sectionIndex) => (
+        {(data.list?.sections || []).map((section) => (
           <div key={section.id} className={listNodeStyles.section}>
             <div className={listNodeStyles.sectionItems}>
-              {(section.items || []).map((item, itemIndex) => (
+              {(section.items || []).map((item) => (
                 <div key={item.id} className={listNodeStyles.item}>
                   <span>{item.title}</span>
                   <Handle type="source" position={Position.Right} id={item.id} className={listNodeStyles.handle} />
@@ -304,9 +258,11 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
           </div>
         ))}
       </div>
-      <div className={listNodeStyles.buttons}>
-        <Button variant="outline" size="sm" className={listNodeStyles.listButton}>Default</Button>
-        <Button variant="outline" size="sm" className={listNodeStyles.listButton}>New Button</Button>
+       <div className={listNodeStyles.buttons}>
+        <div className={listNodeStyles.listButton}>
+            {data.list?.menuButtonText || 'Menu'}
+            <Handle type="source" position={Position.Right} id="list-button-default" className={listNodeStyles.handle} />
+        </div>
       </div>
     </div>
   );
@@ -317,7 +273,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       className={cn(styles.baseNode, isMessageNode && styles.messageNode)}
       style={customStyle}
       aria-selected={selected}
-      onClick={handleNodeClick}
     >
       <NodeAvatars nodeId={id} />
       <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
@@ -437,7 +392,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       ) : isButtonsNode ? (
         null
       ) : isListNode ? (
-        null // Handles are now part of the listBody rendering
+        null 
       ) : isMessageNode ? (
         <Handle type="source" position={Position.Right} className={styles.handle} />
       ) : (

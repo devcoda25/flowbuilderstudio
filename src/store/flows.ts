@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import { type FullFlow, useFlowStore, useFlowMetaStore } from './flow';
+import { type FullFlow } from './flow';
 
 const LOCAL_STORAGE_KEY = 'omni_flows';
 
@@ -10,7 +10,7 @@ type FlowsState = {
   activeFlowId: string | null;
   activeFlow: FullFlow | null;
   loadFlows: () => void;
-  saveFlow: (flowData: FullFlow) => void;
+  saveFlow: (flowData: Omit<FullFlow, 'id' | 'lastModified'> & { id?: string }) => void;
   setActiveFlow: (flowId: string | null) => void;
   createNewFlow: () => void;
   deleteFlow: (flowId: string) => void;
@@ -64,8 +64,11 @@ export const useFlowsStore = create<FlowsState>((set, get) => ({
 
   saveFlow: (flowData) => {
     const flows = get().flows;
-    const existingIndex = flows.findIndex(f => f.id === flowData.id);
-    const updatedFlow = { ...flowData, lastModified: Date.now() };
+    const flowId = flowData.id || get().activeFlowId;
+    if (!flowId) return;
+
+    const existingIndex = flows.findIndex(f => f.id === flowId);
+    const updatedFlow = { ...flows[existingIndex], ...flowData, id: flowId, lastModified: Date.now() };
 
     let newFlows: FullFlow[];
     if (existingIndex > -1) {
@@ -81,7 +84,6 @@ export const useFlowsStore = create<FlowsState>((set, get) => ({
     const flow = get().flows.find(f => f.id === flowId);
     if (flow) {
       set({ activeFlow: flow, activeFlowId: flow.id });
-      // This will trigger the subscription in StudioClientPage to update the canvas
     }
   },
 
@@ -96,10 +98,10 @@ export const useFlowsStore = create<FlowsState>((set, get) => ({
   deleteFlow: (flowId) => {
     let newFlows = get().flows.filter(f => f.id !== flowId);
     
-    // If we deleted the active flow, select another one or create a new one
     if (get().activeFlowId === flowId) {
         if (newFlows.length > 0) {
-            get().setActiveFlow(newFlows.sort((a,b) => b.lastModified - a.lastModified)[0].id);
+            const nextActiveFlow = newFlows.sort((a,b) => b.lastModified - a.lastModified)[0];
+            get().setActiveFlow(nextActiveFlow.id);
         } else {
             const newFlow = getDefaultFlow();
             newFlows = [newFlow];
@@ -113,4 +115,6 @@ export const useFlowsStore = create<FlowsState>((set, get) => ({
 }));
 
 // Initialize the store
-useFlowsStore.getState().loadFlows();
+if (typeof window !== 'undefined') {
+    useFlowsStore.getState().loadFlows();
+}

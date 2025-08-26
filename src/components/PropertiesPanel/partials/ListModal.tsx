@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,31 +12,31 @@ import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
     ssr: false,
-    loading: () => <div className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
+    loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
 
 
 type ListItem = { id: string; title: string; description?: string };
 type ListSection = { id: string; title: string; items: ListItem[] };
 type ListData = {
-  content: string;
+  content?: string;
   footerText?: string;
-  buttonText: string;
+  buttonText?: string;
   variableName?: string;
-  sections: ListSection[];
+  sections?: ListSection[];
 };
 
 type ListModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: ListData) => void;
-  initialData?: Partial<ListData>;
+  onSave: (data: { list: ListData }) => void;
+  initialData?: { list?: ListData, content?: string };
 };
 
 const defaultSection = (): ListSection => ({
   id: nanoid(),
-  title: '',
-  items: [{ id: nanoid(), title: '', description: '' }],
+  title: 'Section 1',
+  items: [{ id: nanoid(), title: 'List item 1', description: 'Item description' }],
 });
 
 const defaultItem = (): ListItem => ({
@@ -48,26 +48,30 @@ const defaultItem = (): ListItem => ({
 export default function ListModal({ isOpen, onClose, onSave, initialData }: ListModalProps) {
   const methods = useForm<ListData>({
     defaultValues: {
-      content: 'default body',
-      buttonText: 'Menu Here',
+      content: 'Select an option',
+      buttonText: 'Menu',
       sections: [defaultSection()],
-      ...initialData,
+      variableName: '@value',
     },
   });
 
   useEffect(() => {
     if (isOpen) {
-      methods.reset({
-        content: 'default body',
-        buttonText: 'Menu Here',
-        sections: [defaultSection()],
-        ...initialData,
-      });
+        const listData = initialData?.list || {};
+        const content = initialData?.content || 'Select an option';
+        const defaults = {
+            content: content,
+            buttonText: listData.buttonText || 'Menu',
+            sections: listData.sections && listData.sections.length > 0 ? listData.sections : [defaultSection()],
+            footerText: listData.footerText || '',
+            variableName: listData.variableName || '@value'
+        };
+        methods.reset(defaults);
     }
   }, [initialData, isOpen, methods]);
 
   const onSubmit = (data: ListData) => {
-    onSave(data);
+    onSave({ list: data });
     onClose();
   };
   
@@ -77,7 +81,8 @@ export default function ListModal({ isOpen, onClose, onSave, initialData }: List
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Set List</DialogTitle>
+          <DialogTitle>Configure List Message</DialogTitle>
+          <DialogDescription>Create a list of options for the user to choose from.</DialogDescription>
         </DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)}>
@@ -90,7 +95,7 @@ export default function ListModal({ isOpen, onClose, onSave, initialData }: List
                       control={methods.control}
                       render={({ field }) => (
                         <RichTextEditor
-                          value={field.value}
+                          value={field.value || ''}
                           onChange={field.onChange}
                           variables={['name', 'email', 'order_id']}
                         />
@@ -100,25 +105,25 @@ export default function ListModal({ isOpen, onClose, onSave, initialData }: List
 
                 <div className="space-y-2">
                   <Label>Footer Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
-                  <Input {...methods.register('footerText')} placeholder="Input value" />
+                  <Input {...methods.register('footerText')} placeholder="e.g. Required" />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Button Text <span className="text-muted-foreground">(required, max 20 chars)</span></Label>
-                  <Input {...methods.register('buttonText')} placeholder="Menu Here" />
+                  <Input {...methods.register('buttonText')} placeholder="Menu" />
                 </div>
                 
                 <SectionsArray />
 
                 <div className="space-y-2">
-                  <Label>Save Answers in a variable</Label>
+                  <Label>Save Answer In Variable</Label>
                   <Input {...methods.register('variableName')} placeholder="@value" />
                 </div>
               </div>
             </ScrollArea>
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 border-t mt-4">
               <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">Save</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </FormProvider>
@@ -136,33 +141,34 @@ function SectionsArray() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4 border rounded-lg">
+        <Label>Sections</Label>
       {fields.map((field, index) => (
         <div key={field.id} className="p-4 border rounded-lg bg-muted/50 space-y-4">
-          <div className="space-y-2">
+          <div className="flex items-center justify-between">
             <Label>Section {index + 1} Title <span className="text-muted-foreground">(optional, max 24 chars)</span></Label>
-            <Input {...control.register(`sections.${index}.title`)} placeholder="Input value" />
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => remove(index)}
+                disabled={fields.length <= 1}
+                className="text-destructive hover:text-destructive"
+            >
+                <Trash2 className="w-4 h-4"/>
+            </Button>
           </div>
+          <Input {...control.register(`sections.${index}.title`)} placeholder="Section Title" />
           
           <ItemsArray sectionIndex={index} />
-          
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => remove(index)}
-            disabled={fields.length <= 1}
-          >
-            Remove Section
-          </Button>
         </div>
       ))}
       <Button
         type="button"
         variant="outline"
-        className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
         onClick={() => append(defaultSection())}
       >
-        Add New Section
+        + Add Section
       </Button>
     </div>
   );
@@ -175,40 +181,29 @@ function ItemsArray({ sectionIndex }: { sectionIndex: number }) {
     name: `sections.${sectionIndex}.items` as const,
   });
 
-  const watchFieldArray = watch(`sections.${sectionIndex}.items`);
-  const controlledFields = fields.map((field, index) => {
-    return {
-      ...field,
-      ...watchFieldArray[index]
-    };
-  });
-  
-  const { setValue } = useFormContext();
-
   return (
-    <div className="space-y-2">
-      {controlledFields.map((field, index) => (
-        <div key={field.id} className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label>Row {index + 1} <span className="text-muted-foreground">(required, max 24 chars)</span></Label>
-             {!field.description && (
-                <Button variant="link" size="sm" className="h-auto p-0" type="button" onClick={() => setValue(`sections.${sectionIndex}.items.${index}.description`, '')}>Add Description</Button>
-             )}
-          </div>
-          <Input {...control.register(`sections.${sectionIndex}.items.${index}.title`)} placeholder="default now" />
-           {field.description !== undefined && (
-             <div className="flex gap-2">
-                <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Description (optional, max 72 chars)" />
-                <Button variant="ghost" size="icon" type="button" onClick={() => setValue(`sections.${sectionIndex}.items.${index}.description`, undefined)}>
+    <div className="space-y-3 pl-4 border-l-2">
+      {fields.map((field, index) => (
+        <div key={field.id} className="space-y-2 p-3 bg-background rounded-md shadow-sm">
+            <div className="flex justify-between items-center">
+                 <Label>Item {index + 1} Title<span className="text-muted-foreground ml-2">(required, max 24 chars)</span></Label>
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
+                    className="text-destructive hover:text-destructive"
+                 >
                     <Trash2 className="w-4 h-4"/>
                 </Button>
-             </div>
-           )}
+            </div>
+            <Input {...control.register(`sections.${sectionIndex}.items.${index}.title`)} placeholder="Item title" />
+            <Label>Description <span className="text-muted-foreground">(optional, max 72 chars)</span></Label>
+            <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Item description" />
         </div>
       ))}
-      <div className="flex items-center gap-4">
-        <Button variant="link" type="button" onClick={() => append(defaultItem())}>New Row</Button>
-      </div>
+      <Button variant="secondary" size="sm" type="button" onClick={() => append(defaultItem())}>+ Add Item</Button>
     </div>
   );
 }

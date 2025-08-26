@@ -9,10 +9,11 @@ import { nanoid } from 'nanoid';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import dynamic from 'next/dynamic';
+import { Trash2 } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
     ssr: false,
-    loading: () => <div className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
+    loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
 
 
@@ -37,14 +38,13 @@ type ButtonsModalProps = {
   initialData?: Partial<FormValues>;
 };
 
-const MAX_BUTTONS = 3;
+const MAX_BUTTONS = 10; // WhatsApp allows 10 quick replies in templates
 
 export default function ButtonsModal({ isOpen, onClose, onSave, initialData }: ButtonsModalProps) {
   const methods = useForm<FormValues>({
     defaultValues: {
       content: 'Ask a question here',
       quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-      ...initialData,
     },
   });
 
@@ -53,16 +53,16 @@ export default function ButtonsModal({ isOpen, onClose, onSave, initialData }: B
     control,
     name: "quickReplies"
   });
-  
-  const [newButtonText, setNewButtonText] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      methods.reset({
+      const defaults = {
         content: 'Ask a question here',
         quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-        ...initialData,
-      });
+        variableName: '@value',
+        ...initialData
+      };
+      methods.reset(defaults);
     }
   }, [initialData, isOpen, methods]);
 
@@ -70,37 +70,27 @@ export default function ButtonsModal({ isOpen, onClose, onSave, initialData }: B
     onSave(data);
     onClose();
   };
-
-  const handleCreateButton = () => {
-    if (newButtonText.trim() && fields.length < MAX_BUTTONS) {
-      append({ id: nanoid(), label: newButtonText.trim() });
-      setNewButtonText('');
-    }
-  };
-
+  
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Set Buttons</DialogTitle>
+          <DialogTitle>Configure Buttons</DialogTitle>
         </DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] pr-4 -mr-4">
               <div className="space-y-6 py-4">
-                <div className="flex items-center justify-between">
-                  <Label>Media Header</Label>
-                  <Controller name="mediaHeader" control={control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <Label htmlFor="media-header-switch">Media Header</Label>
+                  <Controller name="mediaHeader" control={control} render={({ field }) => <Switch id="media-header-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Header Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
-                  <div className="flex items-center gap-2">
-                    <Input {...register('headerText')} placeholder="Input value" />
-                    <Button variant="outline" size="sm" className="bg-green-600 hover:bg-green-700 text-white border-none shrink-0">Variables</Button>
-                  </div>
+                  <Input {...register('headerText')} placeholder="E.g. Choose your destiny" />
                 </div>
 
                 <div className="space-y-2">
@@ -112,7 +102,7 @@ export default function ButtonsModal({ isOpen, onClose, onSave, initialData }: B
                       <RichTextEditor
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Ask a question here"
+                        placeholder="Ask a question..."
                         variables={['name', 'email', 'order_id']}
                       />
                     )}
@@ -121,42 +111,37 @@ export default function ButtonsModal({ isOpen, onClose, onSave, initialData }: B
 
                 <div className="space-y-2">
                   <Label>Footer Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
-                  <Input {...register('footerText')} placeholder="Input value" />
+                  <Input {...register('footerText')} placeholder="E.g. Reply to this message" />
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <Label>Buttons</Label>
                   {fields.map((field, index) => (
-                    <div key={field.id} className="space-y-2">
-                      <Label>Button {index + 1} <span className="text-muted-foreground">(required, max 20 chars)</span></Label>
-                      <Input {...register(`quickReplies.${index}.label`)} />
+                    <div key={field.id} className="flex items-center gap-2">
+                      <Input {...register(`quickReplies.${index}.label`)} placeholder={`Button ${index + 1}`} />
+                       <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                       </Button>
                     </div>
                   ))}
                   
                   {fields.length < MAX_BUTTONS && (
-                    <div className="space-y-2">
-                      <Label>New Button <span className="text-muted-foreground">(max 20 chars)</span></Label>
-                       <div className="flex items-center gap-2">
-                        <Input 
-                          value={newButtonText}
-                          onChange={(e) => setNewButtonText(e.target.value)}
-                          placeholder="Input value"
-                        />
-                        <Button type="button" onClick={handleCreateButton} className="bg-green-600 hover:bg-green-700 text-white shrink-0">Create</Button>
-                      </div>
-                    </div>
+                     <Button type="button" variant="outline" size="sm" onClick={() => append({ id: nanoid(), label: '' })}>
+                        + Add Button
+                    </Button>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Save Answers in a variable</Label>
+                  <Label>Save Answer In Variable</Label>
                   <Input {...register('variableName')} placeholder="@value" />
                 </div>
 
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
-              <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">Save</Button>
+              <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </FormProvider>

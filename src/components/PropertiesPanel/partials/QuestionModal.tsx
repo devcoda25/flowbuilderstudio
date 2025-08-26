@@ -4,15 +4,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useForm, FormProvider, Controller } from 'react-hook-form';
+import { useForm, FormProvider, Controller, useFieldArray } from 'react-hook-form';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import dynamic from 'next/dynamic';
+import { Trash2 } from 'lucide-react';
+import { nanoid } from 'nanoid';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
     ssr: false,
-    loading: () => <div className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
+    loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
 
 
@@ -39,11 +41,15 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
       acceptMedia: false,
       variableName: '@value',
       advancedOptions: false,
-      ...initialData,
     },
   });
 
   const { control, handleSubmit, register, watch } = methods;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "answerVariants"
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -70,9 +76,9 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Set a question</span>
-            <a href="#" className="text-sm font-normal text-primary hover:underline">How to use</a>
+            <span>Ask a Question</span>
           </DialogTitle>
+           <DialogDescription>Ask an open-ended question and save the user's reply.</DialogDescription>
         </DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -80,7 +86,7 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
               <div className="space-y-6 py-4">
                 
                 <div className="space-y-2">
-                  <Label>Question text</Label>
+                  <Label>Question Text</Label>
                   <Controller
                     name="content"
                     control={control}
@@ -95,48 +101,50 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
                   />
                 </div>
 
-                <div className="space-y-2">
-                    <Label>Add answer variant</Label>
-                    <div className="flex items-center gap-2">
-                        <Input placeholder="Hi!" />
-                        <Button type="button" className="bg-green-600 hover:bg-green-700 text-white shrink-0">Create</Button>
-                    </div>
+                <div className="space-y-3 p-4 border rounded-lg">
+                    <Label>Answer Variants (optional)</Label>
+                    <p className="text-xs text-muted-foreground">Add expected variations of an answer, like "Hi" or "Hello".</p>
+                     {fields.map((field, index) => (
+                        <div key={field.id} className="flex items-center gap-2">
+                           <Controller
+                                name={`answerVariants.${index}.value` as const}
+                                control={control}
+                                render={({ field }) => <Input {...field} placeholder="e.g. Yes" />}
+                            />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                <Trash2 className="w-4 h-4 text-destructive"/>
+                            </Button>
+                        </div>
+                     ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>+ Add Variant</Button>
                 </div>
 
                 <Separator />
                 
-                <div className="flex items-center justify-between">
-                    <Label>Accept a media response</Label>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Off</span>
-                        <Controller name="acceptMedia" control={control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
-                        <span className="text-sm text-muted-foreground">On</span>
-                    </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <Label htmlFor="accept-media-switch">Accept a media response</Label>
+                    <Controller name="acceptMedia" control={control} render={({ field }) => <Switch id="accept-media-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
                 
                 <Separator />
 
                 <div className="space-y-2">
-                  <Label>Save Answers in a variable</Label>
+                  <Label>Save Answer In Variable</Label>
                   <Input {...register('variableName')} placeholder="@value" />
                 </div>
                 
                 <Separator />
 
-                <div className="flex items-center justify-between">
-                    <Label>Advanced options</Label>
-                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Off</span>
-                        <Controller name="advancedOptions" control={control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
-                        <span className="text-sm text-muted-foreground">On</span>
-                    </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <Label htmlFor="advanced-switch">Advanced options</Label>
+                    <Controller name="advancedOptions" control={control} render={({ field }) => <Switch id="advanced-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
 
               </div>
             </ScrollArea>
-            <DialogFooter className="pt-6">
-              <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">Save</Button>
+            <DialogFooter className="pt-6 border-t mt-6">
+              <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
         </FormProvider>
