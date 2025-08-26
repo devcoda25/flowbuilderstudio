@@ -100,7 +100,7 @@ const getFileIcon = (fileName?: string) => {
 
 export default function BaseNode({ id, data, selected }: { id: string; data: BaseNodeData; selected: boolean }) {
   const { deleteNode, duplicateNode, setStartNode, startNodeId, updateNodeData, nodes } = useFlowStore();
-  const { getNode } = useReactFlow();
+  const { getNode, getViewport, project } = useReactFlow();
   const [isEditing, setIsEditing] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
   const isOpeningModal = useRef(false);
@@ -123,6 +123,27 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const isListNode = data.label === 'List';
   const isStartNode = startNodeId === id;
 
+  // Handle canvas clicks to close the editor
+  useEffect(() => {
+    if (!isMessageNode || !nodeRef.current) return;
+
+    const handleCanvasClick = (event: MouseEvent) => {
+      if (isEditing && !isOpeningModal.current) {
+        const target = event.target as HTMLElement;
+        if (!nodeRef.current?.contains(target)) {
+          setIsEditing(false);
+        }
+      }
+    };
+
+    const canvas = document.querySelector('.react-flow__viewport') as HTMLElement | null;
+    if (canvas) {
+      canvas.addEventListener('click', handleCanvasClick as EventListener);
+      return () => canvas.removeEventListener('click', handleCanvasClick as EventListener);
+    }
+  }, [isEditing, isMessageNode]);
+
+  // Fallback click-away handler for non-canvas elements
   useClickAway(nodeRef, () => {
     if (isMessageNode && isEditing && !isOpeningModal.current) {
       setIsEditing(false);
@@ -177,6 +198,22 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     }
   };
 
+  // Handle clicks on the node to open the editor for messaging nodes
+  const handleNodeClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isMessageNode || isEditing) return;
+
+    // Check if the click target is an interactive element
+    const target = event.target as HTMLElement;
+    const isInteractive = target.closest(
+      `.${styles.nodeMore}, .${styles.mediaGridItem}, .${styles.deletePartButton}, .${listNodeStyles.listButton}`
+    );
+
+    if (!isInteractive) {
+      event.stopPropagation(); // Prevent canvas click from closing immediately
+      setIsEditing(true);
+    }
+  };
+
   const messageBody = (
     <div className={styles.messageNodeBody}>
       {isEditing ? (
@@ -189,7 +226,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       ) : (
         <div
           className="w-full cursor-text"
-          onClick={() => setIsEditing(true)}
+          onDoubleClick={() => handleDoubleClick()}
         >
           <div
             className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px]"
@@ -275,7 +312,13 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   );
 
   return (
-    <div ref={nodeRef} className={cn(styles.baseNode, isMessageNode && styles.messageNode)} style={customStyle} aria-selected={selected}>
+    <div
+      ref={nodeRef}
+      className={cn(styles.baseNode, isMessageNode && styles.messageNode)}
+      style={customStyle}
+      aria-selected={selected}
+      onClick={handleNodeClick}
+    >
       <NodeAvatars nodeId={id} />
       <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
         <div className={styles.headerLeft}>
