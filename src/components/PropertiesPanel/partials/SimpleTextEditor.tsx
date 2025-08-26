@@ -18,7 +18,7 @@ type SimpleTextEditorProps = {
   variables?: string[];
 };
 
-const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: string[] }) => {
+const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: string[] }) => {
   if (!editor) return null;
 
   const handleVariableInsert = (variable: string) => {
@@ -66,7 +66,6 @@ const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: str
   );
 };
 
-
 export default function SimpleTextEditor({
   value,
   onChange,
@@ -101,7 +100,7 @@ export default function SimpleTextEditor({
 
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-      editor.commands.setContent(value, false);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
