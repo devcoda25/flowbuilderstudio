@@ -1,12 +1,4 @@
 
-
-
-
-
-
-
-
-
 .root { 
   position: relative; 
   height: 100%; 
@@ -104,6 +96,10 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   width: 320px;
   transition: box-shadow 0.2s ease-in-out;
+}
+
+.messageNode {
+    width: 600px;
 }
 
 .baseNode:hover,

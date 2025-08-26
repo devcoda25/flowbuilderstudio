@@ -6,7 +6,8 @@ import { Handle, Position, Node, useReactFlow } from 'reactflow';
 import styles from '../canvas-layout.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image as ImageIcon, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, LucideIcon } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image as ImageIcon, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ import { nanoid } from 'nanoid';
 import { Input } from '@/components/ui/input';
 import dynamic from 'next/dynamic';
 import { useClickAway } from 'react-use';
+import { cn } from '@/lib/utils';
 
 const RichTextEditor = dynamic(() => import('@/components/PropertiesPanel/partials/RichTextEditor'), {
   ssr: false,
@@ -112,10 +114,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     '--node-color': data.color || 'hsl(var(--primary))',
   } as React.CSSProperties;
 
-  // Type-safe dynamic icon selection using LucideIcon type
-  const Icon: LucideIcon = data.icon && Object.prototype.hasOwnProperty.call(lucideIcons, data.icon)
-    ? (lucideIcons as Record<string, LucideIcon>)[data.icon]
-    : MessageSquareIcon;
+  const Icon = data.icon ? (LucideIcons as any)[data.icon] ?? LucideIcons.HelpCircle : LucideIcons.MessageSquare;
 
   const isMessageNode = data.type === 'messaging' && data.label === 'Send a Message';
   const isAskQuestionNode = data.label === 'Question';
@@ -127,10 +126,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   useClickAway(nodeRef, () => {
     if (isMessageNode && isEditing && !isOpeningModal.current) {
       setIsEditing(false);
-    }
-    if (isOpeningModal.current) {
-      // Reset after a short delay to allow the modal to open
-      setTimeout(() => { isOpeningModal.current = false; }, 100);
     }
   });
 
@@ -171,12 +166,14 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document') => {
     isOpeningModal.current = true;
     data.onOpenAttachmentModal?.(id, nanoid(), type);
+    setTimeout(() => { isOpeningModal.current = false; }, 100);
   };
 
   const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
     if (isMediaPart({ id: partId, type } as ContentPart)) {
       isOpeningModal.current = true;
       data.onOpenAttachmentModal?.(id, partId, type as 'image' | 'video' | 'audio' | 'document');
+      setTimeout(() => { isOpeningModal.current = false; }, 100);
     }
   };
 
@@ -191,36 +188,40 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         />
       ) : (
         <div
+          className="w-full cursor-text"
           onClick={() => setIsEditing(true)}
-          className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px]"
-          dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
-        />
-      )}
-      {mediaParts.length > 0 && (
-        <div className={styles.mediaGrid}>
-          {mediaParts.map(part => (
-            <div
-              key={part.id}
-              className={styles.mediaGridItem}
-              onClick={() => handleOpenAttachment(part.id, part.type)}
-              title={isMediaPart(part) ? `Edit ${part.name || part.type}` : `Edit ${part.type}`}
-            >
-              {part.type === 'image' && part.url && (
-                <img
-                  src={part.url}
-                  alt={isMediaPart(part) ? part.name || 'attachment' : 'attachment'}
-                  className={styles.mediaGridImage}
-                  data-ai-hint="product photo"
-                />
-              )}
-              {part.type === 'video' && <Video className="w-8 h-8" />}
-              {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
-              {part.type === 'document' && getFileIcon(isMediaPart(part) ? part.name : undefined)}
-              <button onClick={(e) => { e.stopPropagation(); handleDeletePart(part.id); }} className={styles.deletePartButton}>
-                <Trash2 size={12} />
-              </button>
+        >
+          <div
+            className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px]"
+            dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
+          />
+          {mediaParts.length > 0 && (
+            <div className={styles.mediaGrid} style={{ padding: '0 12px 12px' }}>
+              {mediaParts.map(part => (
+                <div
+                  key={part.id}
+                  className={styles.mediaGridItem}
+                  onClick={(e) => { e.stopPropagation(); handleOpenAttachment(part.id, part.type); }}
+                  title={isMediaPart(part) ? `Edit ${part.name || part.type}` : `Edit ${part.type}`}
+                >
+                  {part.type === 'image' && part.url && (
+                    <img
+                      src={part.url}
+                      alt={isMediaPart(part) ? part.name || 'attachment' : 'attachment'}
+                      className={styles.mediaGridImage}
+                      data-ai-hint="product photo"
+                    />
+                  )}
+                  {part.type === 'video' && <Video className="w-8 h-8" />}
+                  {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
+                  {part.type === 'document' && getFileIcon(isMediaPart(part) ? part.name : undefined)}
+                  <button onClick={(e) => { e.stopPropagation(); handleDeletePart(part.id); }} className={styles.deletePartButton}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -274,7 +275,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   );
 
   return (
-    <div ref={nodeRef} className={styles.baseNode} style={customStyle} aria-selected={selected}>
+    <div ref={nodeRef} className={cn(styles.baseNode, isMessageNode && styles.messageNode)} style={customStyle} aria-selected={selected}>
       <NodeAvatars nodeId={id} />
       <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
         <div className={styles.headerLeft}>
@@ -402,24 +403,3 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     </div>
   );
 }
-
-// Define lucideIcons for type safety
-const lucideIcons = {
-  MoreHorizontal,
-  Trash2,
-  Copy,
-  PlayCircle,
-  XCircle,
-  Settings,
-  ImageIcon,
-  Video,
-  AudioLines,
-  FileText,
-  MessageSquare: MessageSquareIcon,
-  File: FileIcon,
-  Film,
-  Music,
-  FileQuestion,
-  FileSpreadsheet,
-  FileJson,
-};

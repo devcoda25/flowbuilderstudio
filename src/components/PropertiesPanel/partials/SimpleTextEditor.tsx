@@ -6,6 +6,7 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Italic, Strikethrough, Code, Smile } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import styles from './simple-text-editor.module.css';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
@@ -17,7 +18,7 @@ type SimpleTextEditorProps = {
   variables?: string[];
 };
 
-const Toolbar = ({ editor, variables }: { editor: Editor | null; variables?: string[] }) => {
+const Toolbar = ({ editor, variables }: { editor: Editor | null, variables?: string[] }) => {
   if (!editor) return null;
 
   const handleVariableInsert = (variable: string) => {
