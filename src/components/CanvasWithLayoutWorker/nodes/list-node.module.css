@@ -1,0 +1,72 @@
+.body {
+    @apply p-0 flex flex-col;
+}
+
+.bodyInput {
+    @apply border-none text-sm text-foreground bg-transparent px-3 py-2;
+}
+.bodyInput:focus {
+    @apply ring-0 shadow-none bg-gray-100 dark:bg-gray-800 rounded-md;
+}
+
+.sections {
+    @apply space-y-0 flex flex-col;
+}
+
+.section {
+    @apply p-0;
+}
+
+.sectionHeader {
+    @apply flex items-center justify-between;
+}
+
+.sectionTitleInput {
+     @apply bg-transparent border-none text-foreground font-semibold h-auto p-0;
+}
+.sectionTitleInput:focus {
+    @apply ring-0 shadow-none bg-gray-200 dark:bg-gray-700;
+}
+
+.sectionItems {
+    @apply space-y-0 flex flex-col;
+}
+
+.item {
+    @apply bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between relative mx-3;
+}
+.item:last-child {
+    @apply border-b-0 rounded-b-md;
+}
+.item:first-of-type {
+    @apply rounded-t-md;
+}
+
+
+.itemTitleInput {
+    @apply bg-transparent border-none text-foreground h-auto p-2 w-full;
+}
+.itemTitleInput:focus {
+    @apply ring-0 shadow-none bg-gray-200 dark:bg-gray-700;
+}
+
+.handle {
+    width: 12px !important;
+    height: 12px !important;
+    background: #22c55e !important; /* green-500 */
+    border-radius: 999px !important;
+    border: 2px solid #f3f4f6 !important; /* bg-gray-100 */
+    right: 12px !important;
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    box-shadow: 0 0 0 1px #e5e7eb; /* border-gray-200 */
+}
+
+.buttons {
+    @apply p-3 flex flex-col gap-2;
+}
+
+.listButton {
+    @apply w-full;
+}

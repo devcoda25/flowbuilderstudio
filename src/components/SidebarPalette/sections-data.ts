@@ -25,8 +25,19 @@ export type PaletteItemPayload = {
   type: NodeCategory
   color?: string
   description?: string
-  content?: string
-  quickReplies?: { id: string; label: string }[];
+  content?: string // Used for message content, question text, list body
+  quickReplies?: { id: string; label: string }[]; // Used for Buttons node
+  list?: { // Used for the new List node structure
+    content: string;
+    footerText: string;
+    buttonText: string;
+    variableName: string;
+    sections: {
+      id: string;
+      title: string;
+      items: { id: string; title: string; description?: string }[];
+    }[];
+  }
 }
 
 export type ItemDefinition = PaletteItemPayload & {
@@ -54,9 +65,32 @@ export const SECTION_DATA: SectionDefinition[] = [
       title: 'Messaging',
       items: [
           { key: 'message', label: 'Send a Message', icon: 'Send', type: 'messaging', color: NODE_COLORS[1], description: 'Send text, media, or interactive messages' },
-          { key: 'askQuestion', label: 'Ask a Question', icon: 'HelpCircle', type: 'inputs', color: NODE_COLORS[2], description: 'Ask an open-ended question and wait for a reply' },
-          { key: 'buttons', label: 'Buttons', icon: 'MessageSquarePlus', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with up to 10 buttons', content: 'Ask a question', quickReplies: [{ id: nanoid(), label: 'Button 1' }] },
-          { key: 'list', label: 'List', icon: 'List', type: 'inputs', color: NODE_COLORS[2], description: 'Ask a question with a list of up to 10 choices', content: 'Ask a question', quickReplies: [{ id: nanoid(), label: 'Option 1' }] },
+          { key: 'askQuestion', label: 'Question', icon: 'HelpCircle', type: 'inputs', color: NODE_COLORS[2], description: 'Ask an open-ended question and wait for a reply' },
+          { key: 'buttons', label: 'Buttons', icon: 'MessageSquarePlus', type: 'inputs', color: NODE_COLORS[1], description: 'Ask a question with up to 10 buttons', content: 'Ask a question here', quickReplies: [{ id: nanoid(), label: 'Answer 1' }, { id: nanoid(), label: 'Default' }] },
+          {
+            key: 'list',
+            label: 'List',
+            icon: 'List',
+            type: 'inputs',
+            color: NODE_COLORS[1],
+            description: 'Ask a question with a list of up to 10 choices',
+            content: 'default body',
+            list: {
+              content: 'default body',
+              footerText: '',
+              buttonText: 'Menu Here',
+              variableName: '@value',
+              sections: [
+                {
+                  id: nanoid(),
+                  title: 'Section 1',
+                  items: [
+                    { id: nanoid(), title: 'default row', description: '' },
+                  ]
+                }
+              ]
+            }
+          },
           { key: 'sendTemplate', label: 'Send a Template', icon: 'Mailbox', type: 'messaging', color: NODE_COLORS[1], description: 'Send a pre-approved template message', channels: ['whatsapp'] },
       ]
     },
@@ -83,8 +117,8 @@ export const SECTION_DATA: SectionDefinition[] = [
       key: 'handoff',
       title: 'Handoff',
       items: [
-          { key: 'assignTeam', label: 'Assign to Team', icon: 'Users', type: 'handoff', color: NODE_COLORS[5], description: 'Assign the conversation to a team' },
-          { key: 'assignUser', label: 'Assign to User', icon: 'User', type: 'handoff', color: NODE_COLORS[5], description: 'Assign the conversation to a specific user' },
+          { key: 'assignTeam', label: 'Assign to Team', icon: 'Users', type: 'handoff', color: NODE_COLORS[4], description: 'Assign the conversation to a team' },
+          { key: 'assignUser', label: 'Assign to User', icon: 'User', type: 'handoff', color: NODE_COLORS[4], description: 'Assign the conversation to a specific user' },
       ]
     }
   ]

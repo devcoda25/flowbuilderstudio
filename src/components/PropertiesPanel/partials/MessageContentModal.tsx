@@ -15,13 +15,15 @@ type MessageContentModalProps = {
   onClose: () => void;
   onSave: (data: { content: string }) => void;
   initialData?: { content: string };
+  onAddMedia: (type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
 export default function MessageContentModal({
   isOpen,
   onClose,
   onSave,
-  initialData
+  initialData,
+  onAddMedia
 }: MessageContentModalProps) {
   const [text, setText] = useState('');
 
@@ -52,6 +54,7 @@ export default function MessageContentModal({
                   value={text}
                   onChange={setText}
                   placeholder="Type your message here..."
+                  onAddMedia={onAddMedia}
               />
           </div>
         </div>

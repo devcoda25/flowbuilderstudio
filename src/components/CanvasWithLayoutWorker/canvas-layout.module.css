@@ -3,6 +3,9 @@
 
 
 
+
+
+
 .root { 
   position: relative; 
   height: 100%; 
@@ -98,7 +101,7 @@
   border: 1px solid hsl(var(--border));
   color: hsl(var(--card-foreground));
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  width: 480px;
+  width: 320px;
   transition: box-shadow 0.2s ease-in-out;
 }
 
@@ -370,46 +373,56 @@
   flex-direction: column;
   gap: 12px;
 }
-.buttonEditorWrapper {
-    max-height: 300px;
-    overflow: auto;
-}
+
 .buttonsQuestion {
-    font-size: 14px;
-    color: hsl(var(--foreground));
-    margin-bottom: 4px;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+  margin-bottom: 8px;
 }
 
 .buttonsList {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .buttonItem {
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 4px;
-    background-color: hsl(var(--background));
-    border-radius: 4px;
-    font-size: 14px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.buttonInput {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: hsl(var(--foreground));
+  font-size: 14px;
+}
+.buttonInput:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .buttonHandle {
   width: 12px !important;
   height: 12px !important;
-  background: hsl(var(--accent)) !important;
-  border: 2px solid white !important;
+  background: #22c55e !important; /* green-500 */
+  border: 2px solid hsl(var(--muted)) !important;
   box-shadow: 0 0 0 1px hsl(var(--border));
   border-radius: 999px;
+  right: 12px !important;
   position: absolute !important;
-  transform: translateY(-50%) !important;
-  right: -24px !important;
   top: 50% !important;
-  
+  transform: translateY(-50%) !important;
 }
+
 
 .edgebuttonWrapper {
   opacity: 0;

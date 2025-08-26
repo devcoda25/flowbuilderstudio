@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -39,6 +40,7 @@ import {
   Video,
   AudioLines,
   FileText,
+  Code,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -249,16 +251,6 @@ const Toolbar = ({
         >
           <AlignRight className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          className={cn('h-8 w-8', editor.isActive({ textAlign: 'justify' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Align Justify"
-        >
-          <AlignJustify className="h-4 w-4" />
-        </Button>
         <Separator orientation="vertical" className="h-6 mx-1" />
         <Button
           type="button"
@@ -301,6 +293,7 @@ const Toolbar = ({
         >
           <Unlink className="h-4 w-4" />
         </Button>
+        <Separator orientation="vertical" className="h-6 mx-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Table options">
@@ -398,37 +391,38 @@ const Toolbar = ({
           </DropdownMenuContent>
         </DropdownMenu>
         {onAddMedia && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                <span>Image</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
-                <Video className="mr-2 h-4 w-4" />
-                <span>Video</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
-                <AudioLines className="mr-2 h-4 w-4" />
-                <span>Audio</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
-                <FileText className="mr-2 h-4 w-4" />
-                <span>Document</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {variables && variables.length > 0 && (
           <>
             <Separator orientation="vertical" className="h-6 mx-1" />
-            <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  <span>Image</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
+                  <Video className="mr-2 h-4 w-4" />
+                  <span>Video</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
+                  <AudioLines className="mr-2 h-4 w-4" />
+                  <span>Audio</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Document</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
+        )}
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        {variables && variables.length > 0 && (
+            <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
         )}
       </div>
     </>
@@ -504,7 +498,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     editorProps: {
       attributes: {
         class:
-          'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+          'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]',
       },
     },
     immediatelyRender: false,
@@ -517,9 +511,9 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
   }, [value, editor]);
 
   return (
-    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col">
+    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background">
       <Toolbar editor={editor} variables={variables} onAddMedia={onAddMedia} />
-      <div className="flex-grow overflow-y-auto min-h-[120px]">
+      <div className="flex-grow overflow-y-auto">
         <EditorContent editor={editor} placeholder={placeholder} />
       </div>
     </div>

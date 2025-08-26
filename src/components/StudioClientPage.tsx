@@ -30,12 +30,17 @@ import GoogleSheetsModal from '@/components/PropertiesPanel/partials/GoogleSheet
 import AssignUserModal from '@/components/PropertiesPanel/partials/AssignUserModal';
 import AssignTeamModal from '@/components/PropertiesPanel/partials/AssignTeamModal';
 import FlowsModal from '@/components/FlowsModal/FlowsModal';
+import ListModal from '@/components/PropertiesPanel/partials/ListModal';
+import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
+import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
+import MessageContentModal from '@/components/PropertiesPanel/partials/MessageContentModal';
+
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { useToast } from '@/hooks/use-toast';
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows';
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'message';
   nodeId?: string;
   data?: any;
   partId?: string;
@@ -80,11 +85,23 @@ function StudioPageContent() {
     const nodeType = node.data?.type;
     const nodeLabel = node.data?.label;
 
-    if (nodeLabel === 'Send a Message' && options?.partId) {
-        const part = node.data.parts?.find((p: ContentPart) => p.id === options.partId);
-        if (part) {
-            setModalState({ type: part.type, nodeId: node.id, partId: options.partId, data: { parts: node.data.parts } });
-        }
+    if (nodeLabel === 'Send a Message') {
+        setModalState({ type: 'message', nodeId: node.id, data: { content: node.data.content } });
+        return;
+    }
+
+    if (nodeLabel === 'Question') {
+        setModalState({ type: 'question', nodeId: node.id, data: node.data });
+        return;
+    }
+
+    if (nodeLabel === 'Buttons') {
+        setModalState({ type: 'buttons', nodeId: node.id, data: node.data });
+        return;
+    }
+
+    if (nodeLabel === 'List') {
+        setModalState({ type: 'list', nodeId: node.id, data: node.data });
         return;
     }
     
@@ -101,10 +118,11 @@ function StudioPageContent() {
     }
   }, []);
 
-  const openAttachmentModal = useCallback((nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document', callback: (media: any) => void) => {
+  const openAttachmentModal = useCallback((nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
-    setModalState({ type, nodeId, partId, data: { parts: node.data.parts }, callback });
+    const part = (node.data.parts || []).find((p: any) => p.id === partId);
+    setModalState({ type, nodeId, partId, data: part });
   }, [nodes]);
   
   const openPropertiesForNode = useCallback((node: Node | null) => {
@@ -133,18 +151,21 @@ function StudioPageContent() {
         const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
         let parts = [...(node.data.parts || [])];
 
-        if (modalState.partId) { // Editing an existing part or replacing a placeholder
+        if (modalState.partId) { // Editing an existing part or adding a new part
             const partIndex = parts.findIndex(p => p.id === modalState.partId);
             if (partIndex !== -1) {
+                // This is an edit
                 parts[partIndex] = { ...parts[partIndex], ...newMediaArray[0] };
                 if (newMediaArray.length > 1) {
                     const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
                     parts.splice(partIndex + 1, 0, ...additionalParts);
                 }
+            } else {
+                // The partId was for a new part, so add it
+                const partToAdd = { id: modalState.partId, ...newMediaArray[0] };
+                const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
+                parts = [...parts, partToAdd, ...additionalParts];
             }
-        } else { // Adding new parts (e.g., from RTE image button)
-            const additionalParts = newMediaArray.map(media => ({ id: nanoid(), ...media }));
-            parts = [...parts, ...additionalParts];
         }
 
         updateNodeData(modalState.nodeId, { parts });
@@ -177,7 +198,6 @@ function StudioPageContent() {
         icon: item.icon,
         color: item.color || getRandomColor(),
         description: item.description,
-        type: item.type,
         content: item.content,
         quickReplies: item.quickReplies,
       },
@@ -257,7 +277,7 @@ function StudioPageContent() {
           setNodes={setNodes}
           onNodeDoubleClick={handleNodeDoubleClick}
           onOpenProperties={openPropertiesForNode}
-          onOpenAttachmentModal={openAttachmentModal as any}
+          onOpenAttachmentModal={openAttachmentModal}
           viewportKey="flow-editor-viewport"
         />
       </main>
@@ -273,6 +293,41 @@ function StudioPageContent() {
       )}
       
       {/* Modals for node functions */}
+       <MessageContentModal
+        isOpen={modalState?.type === 'message'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
+        onAddMedia={(type) => {
+            setModalState(s => s ? { ...s, type: type as any, callback: (newMedia: MediaPart) => {
+                if (s.nodeId) {
+                    const node = nodes.find(n => n.id === s.nodeId);
+                    if (node) {
+                        const newParts = [...(node.data.parts || []), { id: nanoid(), ...newMedia }];
+                        updateNodeData(s.nodeId, { parts: newParts });
+                    }
+                }
+            } } : null);
+        }}
+      />
+       <QuestionModal
+        isOpen={modalState?.type === 'question'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
+      />
+       <ButtonsModal
+        isOpen={modalState?.type === 'buttons'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
+      />
+      <ListModal
+        isOpen={modalState?.type === 'list'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
+      />
       <FlowsModal
         isOpen={modalState?.type === 'flows'}
         onClose={() => setModalState(null)}

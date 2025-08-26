@@ -4,6 +4,7 @@ import styles from './variableChip.module.css';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { cn } from '@/lib/utils';
 
 export default function VariableChipAutocomplete({
   variables = [],
@@ -26,12 +27,20 @@ export default function VariableChipAutocomplete({
     setIsOpen(false);
   }
 
+  const isVariableButton = label === 'Variables';
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="h-8 px-2" title={label}>
-            <span className="font-mono text-base leading-none">{`{{}}`}</span>
-        </Button>
+        {isVariableButton ? (
+            <Button variant="outline" size="sm" className="bg-green-600 hover:bg-green-700 text-white border-none">
+              {label}
+            </Button>
+        ) : (
+            <Button variant="ghost" className="h-8 px-2" title={label}>
+                <span className="font-mono text-base leading-none">{`{{}}`}</span>
+            </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-60 p-0">
         <div className={styles.root}>
