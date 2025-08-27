@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -51,11 +52,11 @@ export default function WebhookModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Webhook</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
+        <div className="grid gap-6 p-4">
             <div className="space-y-2">
                 <Label>URL & Method</Label>
                 <div className="flex gap-2">

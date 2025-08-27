@@ -326,7 +326,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         {isMessageNode ? (
           messageBody
         ) : isAskQuestionNode ? (
-          <p onDoubleClick={() => handleDoubleClick()}>{data.content || 'Ask a question here'}</p>
+          <p onDoubleClick={() => handleDoubleClick()}>{data.content || ''}</p>
         ) : isConditionNode ? (
           <div className={styles.conditionBody} onDoubleClick={() => handleDoubleClick()}>
             {hasConditions ? (

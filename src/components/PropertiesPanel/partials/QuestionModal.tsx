@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import dynamic from 'next/dynamic';
 import { Trash2 } from 'lucide-react';
-import { nanoid } from 'nanoid';
+import { useFlowStore } from '@/store/flow';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
     ssr: false,
@@ -29,43 +29,51 @@ type FormValues = {
 type QuestionModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Partial<FormValues>) => void;
-  initialData?: Partial<FormValues>;
+  nodeId: string;
 };
 
-export default function QuestionModal({ isOpen, onClose, onSave, initialData }: QuestionModalProps) {
+export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModalProps) {
+  const { getNode, updateNodeData } = useFlowStore((state) => ({
+    getNode: (id: string) => state.nodes.find((n) => n.id === id),
+    updateNodeData: state.updateNodeData,
+  }));
+  
+  const node = getNode(nodeId);
+
   const methods = useForm<FormValues>({
-    defaultValues: {
-      content: 'Ask a question here',
+    defaultValues: React.useMemo(() => ({
+      content: '',
       answerVariants: [],
       acceptMedia: false,
       variableName: '@value',
       advancedOptions: false,
-    },
+      ...node?.data,
+    }), [node?.data]),
   });
 
-  const { control, handleSubmit, register, watch } = methods;
+  const { control, handleSubmit, register, reset } = methods;
 
   const { fields, append, remove } = useFieldArray({
     control,
     name: "answerVariants"
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      methods.reset({
-        content: 'Ask a question here',
+  React.useEffect(() => {
+    if (isOpen && node) {
+      reset({
+        content: '',
         answerVariants: [],
         acceptMedia: false,
         variableName: '@value',
         advancedOptions: false,
-        ...initialData,
+        ...node.data,
       });
     }
-  }, [initialData, isOpen, methods]);
+  }, [node, isOpen, reset]);
+
 
   const onSubmit = (data: FormValues) => {
-    onSave(data);
+    updateNodeData(nodeId, data);
     onClose();
   };
 
@@ -73,7 +81,7 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Ask a Question</span>
@@ -83,7 +91,7 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] pr-4 -mr-4">
-              <div className="space-y-6 py-4">
+              <div className="space-y-6 p-4">
                 
                 <div className="space-y-2">
                   <Label>Question Text</Label>
@@ -130,7 +138,7 @@ export default function QuestionModal({ isOpen, onClose, onSave, initialData }: 
 
                 <div className="space-y-2">
                   <Label>Save Answer In Variable</Label>
-                  <Input {...register('variableName')} placeholder="@value" />
+                  <Input {...register('variableName')} placeholder="@value" className="max-w-sm" />
                 </div>
                 
                 <Separator />

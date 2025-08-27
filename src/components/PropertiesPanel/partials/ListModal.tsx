@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid';
 import { Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import dynamic from 'next/dynamic';
+import { useFlowStore } from '@/store/flow';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
     ssr: false,
@@ -18,7 +19,7 @@ const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
 
 type ListItem = { id: string; title: string; description?: string };
 type ListSection = { id: string; title: string; items: ListItem[] };
-type ListData = {
+export type ListData = {
   content?: string;
   footerText?: string;
   buttonText?: string;
@@ -29,8 +30,7 @@ type ListData = {
 type ListModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { list: ListData }) => void;
-  initialData?: { list?: ListData, content?: string };
+  nodeId: string;
 };
 
 const defaultSection = (): ListSection => ({
@@ -45,33 +45,46 @@ const defaultItem = (): ListItem => ({
   description: '',
 });
 
-export default function ListModal({ isOpen, onClose, onSave, initialData }: ListModalProps) {
+export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
+  const { getNode, updateNodeData } = useFlowStore((state) => ({
+    getNode: (id: string) => state.nodes.find((n) => n.id === id),
+    updateNodeData: state.updateNodeData,
+  }));
+  
+  const node = getNode(nodeId);
+
   const methods = useForm<ListData>({
-    defaultValues: {
-      content: 'Select an option',
-      buttonText: 'Menu',
-      sections: [defaultSection()],
-      variableName: '@value',
-    },
+    defaultValues: React.useMemo(() => {
+      const listData = node?.data.list || {};
+      const content = node?.data.content || 'Select an option';
+      return {
+        content,
+        buttonText: listData.buttonText || 'Menu',
+        sections: listData.sections && listData.sections.length > 0 ? listData.sections : [defaultSection()],
+        footerText: listData.footerText || '',
+        variableName: listData.variableName || '@value',
+      };
+    }, [node?.data]),
   });
 
-  useEffect(() => {
-    if (isOpen) {
-        const listData = initialData?.list || {};
-        const content = initialData?.content || 'Select an option';
-        const defaults = {
-            content: content,
-            buttonText: listData.buttonText || 'Menu',
-            sections: listData.sections && listData.sections.length > 0 ? listData.sections : [defaultSection()],
-            footerText: listData.footerText || '',
-            variableName: listData.variableName || '@value'
-        };
-        methods.reset(defaults);
+  const { reset } = methods;
+
+  React.useEffect(() => {
+    if (isOpen && node) {
+      const listData = node.data.list || {};
+      const content = node.data.content || 'Select an option';
+      reset({
+        content,
+        buttonText: listData.buttonText || 'Menu',
+        sections: listData.sections && listData.sections.length > 0 ? listData.sections : [defaultSection()],
+        footerText: listData.footerText || '',
+        variableName: listData.variableName || '@value',
+      });
     }
-  }, [initialData, isOpen, methods]);
+  }, [node, isOpen, reset]);
 
   const onSubmit = (data: ListData) => {
-    onSave({ list: data });
+    updateNodeData(nodeId, { list: data, content: data.content });
     onClose();
   };
   
@@ -87,7 +100,7 @@ export default function ListModal({ isOpen, onClose, onSave, initialData }: List
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] pr-6">
-              <div className="space-y-4 py-4">
+              <div className="space-y-6 p-4">
                 <div className="space-y-2">
                   <Label>Body Text <span className="text-muted-foreground">(required, max 1024 chars)</span></Label>
                    <Controller
@@ -105,23 +118,23 @@ export default function ListModal({ isOpen, onClose, onSave, initialData }: List
 
                 <div className="space-y-2">
                   <Label>Footer Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
-                  <Input {...methods.register('footerText')} placeholder="e.g. Required" />
+                  <Input {...methods.register('footerText')} placeholder="e.g. Required" className="max-w-md" />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Button Text <span className="text-muted-foreground">(required, max 20 chars)</span></Label>
-                  <Input {...methods.register('buttonText')} placeholder="Menu" />
+                  <Input {...methods.register('buttonText')} placeholder="Menu" className="max-w-xs" />
                 </div>
                 
                 <SectionsArray />
 
                 <div className="space-y-2">
                   <Label>Save Answer In Variable</Label>
-                  <Input {...methods.register('variableName')} placeholder="@value" />
+                  <Input {...methods.register('variableName')} placeholder="@value" className="max-w-sm" />
                 </div>
               </div>
             </ScrollArea>
-            <DialogFooter className="pt-4 border-t mt-4">
+            <DialogFooter className="pt-6 border-t mt-4">
               <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
               <Button type="submit">Save</Button>
             </DialogFooter>
@@ -175,7 +188,7 @@ function SectionsArray() {
 }
 
 function ItemsArray({ sectionIndex }: { sectionIndex: number }) {
-  const { control, watch } = useFormContext<ListData>();
+  const { control } = useFormContext<ListData>();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `sections.${sectionIndex}.items` as const,
@@ -184,7 +197,7 @@ function ItemsArray({ sectionIndex }: { sectionIndex: number }) {
   return (
     <div className="space-y-3 pl-4 border-l-2">
       {fields.map((field, index) => (
-        <div key={field.id} className="space-y-2 p-3 bg-background rounded-md shadow-sm">
+        <div key={field.id} className="space-y-3 p-4 bg-background rounded-md shadow-sm border">
             <div className="flex justify-between items-center">
                  <Label>Item {index + 1} Title<span className="text-muted-foreground ml-2">(required, max 24 chars)</span></Label>
                  <Button
@@ -199,8 +212,10 @@ function ItemsArray({ sectionIndex }: { sectionIndex: number }) {
                 </Button>
             </div>
             <Input {...control.register(`sections.${sectionIndex}.items.${index}.title`)} placeholder="Item title" />
-            <Label>Description <span className="text-muted-foreground">(optional, max 72 chars)</span></Label>
-            <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Item description" />
+            <div className="space-y-2">
+              <Label>Description <span className="text-muted-foreground">(optional, max 72 chars)</span></Label>
+              <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Item description" />
+            </div>
         </div>
       ))}
       <Button variant="secondary" size="sm" type="button" onClick={() => append(defaultItem())}>+ Add Item</Button>

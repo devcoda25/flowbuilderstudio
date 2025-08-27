@@ -18,7 +18,6 @@ import PublishBanner from '@/components/Presence/PublishBanner';
 import { FlowEngine } from '@/engine/FlowEngine';
 import { useHistoryStore } from '@/store/history';
 import { getRandomColor } from '@/lib/color-utils';
-import { downloadJson } from '@/components/TestConsole/utils/download';
 
 import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
 import VideoAttachmentModal from '@/components/PropertiesPanel/partials/VideoAttachmentModal';
@@ -33,14 +32,12 @@ import FlowsModal from '@/components/FlowsModal/FlowsModal';
 import ListModal from '@/components/PropertiesPanel/partials/ListModal';
 import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
 import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
-import MessageContentModal from '@/components/PropertiesPanel/partials/MessageContentModal';
-
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { useToast } from '@/hooks/use-toast';
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'message';
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question';
   nodeId?: string;
   data?: any;
   partId?: string;
@@ -54,7 +51,7 @@ function StudioPageContent() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<ModalState | null>(null);
-  const { saveFlow, createNewFlow, deleteFlow, flows, activeFlow } = useFlowsStore();
+  const { saveFlow, createNewFlow, deleteFlow, activeFlow } = useFlowsStore();
   const { toast } = useToast();
 
   const { isTestConsoleOpen, toggleTestConsole } = useUIStore();
@@ -66,7 +63,6 @@ function StudioPageContent() {
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
 
   useEffect(() => {
-    // When the active flow changes in the store, update the canvas
     if (activeFlow) {
         const { nodes, edges, ...meta } = activeFlow;
         setNodes(nodes);
@@ -78,27 +74,23 @@ function StudioPageContent() {
 
   engine.setFlow(nodes, edges);
 
-  const handleNodeDoubleClick = useCallback((node: Node, options?: { partId?: string; type?: string }) => {
-    const nodeType = node.data?.type;
+  const handleNodeDoubleClick = useCallback((node: Node) => {
     const nodeLabel = node.data?.label;
 
-    if (nodeLabel === 'Send a Message') {
-        // The editor is now inline, so double-click is used to enter edit mode in BaseNode.
-        return;
-    }
+    if (nodeLabel === 'Send a Message') return;
 
     if (nodeLabel === 'Question') {
-        setModalState({ type: 'question', nodeId: node.id, data: node.data });
+        setModalState({ type: 'question', nodeId: node.id });
         return;
     }
 
     if (nodeLabel === 'Buttons') {
-        setModalState({ type: 'buttons', nodeId: node.id, data: node.data });
+        setModalState({ type: 'buttons', nodeId: node.id });
         return;
     }
 
     if (nodeLabel === 'List') {
-        setModalState({ type: 'list', nodeId: node.id, data: node.data });
+        setModalState({ type: 'list', nodeId: node.id });
         return;
     }
     
@@ -180,7 +172,6 @@ function StudioPageContent() {
   }
 
   const handleDragStart = (_e: React.DragEvent, item: PaletteItemPayload) => {
-    // This is handled by ReactFlow's onDrop, but you could add logic here
   };
 
   const handleClickAdd = (item: PaletteItemPayload) => {
@@ -291,38 +282,27 @@ function StudioPageContent() {
       )}
       
       {/* Modals for node functions */}
-       <MessageContentModal
-        isOpen={modalState?.type === 'message'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
-        onAddMedia={(type) => {
-            const partId = nanoid();
-            setModalState(s => {
-                if (!s?.nodeId) return null;
-                openAttachmentModal(s.nodeId, partId, type);
-                return s; // Keep the message modal open
-            });
-        }}
-      />
-       <QuestionModal
-        isOpen={modalState?.type === 'question'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
-      />
-       <ButtonsModal
-        isOpen={modalState?.type === 'buttons'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
-      />
-      <ListModal
-        isOpen={modalState?.type === 'list'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
-      />
+       {modalState?.type === 'question' && modalState.nodeId &&
+          <QuestionModal
+            isOpen={true}
+            onClose={() => setModalState(null)}
+            nodeId={modalState.nodeId}
+          />
+        }
+       {modalState?.type === 'buttons' && modalState.nodeId &&
+          <ButtonsModal
+            isOpen={true}
+            onClose={() => setModalState(null)}
+            nodeId={modalState.nodeId}
+          />
+        }
+      {modalState?.type === 'list' && modalState.nodeId &&
+        <ListModal
+            isOpen={true}
+            onClose={() => setModalState(null)}
+            nodeId={modalState.nodeId}
+        />
+      }
       <FlowsModal
         isOpen={modalState?.type === 'flows'}
         onClose={() => setModalState(null)}
@@ -359,31 +339,31 @@ function StudioPageContent() {
           isOpen={modalState?.type === 'webhook'}
           onClose={() => setModalState(null)}
           onSave={onSaveModal}
-          initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
+          initialData={modalState?.data}
       />
       <ConditionModal
         isOpen={modalState?.type === 'condition'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
+        initialData={modalState?.data}
       />
       <GoogleSheetsModal
           isOpen={modalState?.type === 'googleSheets'}
           onClose={() => setModalState(null)}
           onSave={onSaveModal}
-          initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
+          initialData={modalState?.data}
       />
       <AssignUserModal
         isOpen={modalState?.type === 'assignUser'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
+        initialData={modalState?.data}
       />
       <AssignTeamModal
         isOpen={modalState?.type === 'assignTeam'}
         onClose={() => setModalState(null)}
         onSave={onSaveModal}
-        initialData={modalState?.nodeId ? nodes.find(n => n.id === modalState.nodeId)?.data : {}}
+        initialData={modalState?.data}
       />
 
 
