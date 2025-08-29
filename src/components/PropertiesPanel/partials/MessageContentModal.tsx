@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import dynamic from 'next/dynamic';
 
-const RichTextEditor = dynamic(() => import('./RichTextEditor'), { 
-    ssr: false,
-    loading: () => <div className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
+const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
+  ssr: false,
+  loading: () => <div className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
 
 type MessageContentModalProps = {
@@ -23,9 +22,10 @@ export default function MessageContentModal({
   onClose,
   onSave,
   initialData,
-  onAddMedia
+  onAddMedia,
 }: MessageContentModalProps) {
   const [text, setText] = useState('');
+  const modalRef = React.useRef<HTMLDivElement | null>(null); // Added modalRef
 
   useEffect(() => {
     if (isOpen) {
@@ -37,12 +37,12 @@ export default function MessageContentModal({
     onSave({ content: text });
     onClose();
   };
-  
+
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" ref={modalRef}>
         <DialogHeader>
           <DialogTitle>Edit Message</DialogTitle>
           <DialogDescription>Modify the rich text content of your message below.</DialogDescription>
@@ -50,18 +50,19 @@ export default function MessageContentModal({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="message-text">Message Content</Label>
-              <RichTextEditor
-                  value={text}
-                  onChange={setText}
-                  placeholder="Type your message here..."
-                  onAddMedia={onAddMedia}
-                  variables={['name', 'email', 'order_id']}
-              />
+            <RichTextEditor
+              value={text}
+              onChange={setText}
+              placeholder="Type your message here..."
+              onAddMedia={onAddMedia}
+              variables={['name', 'email', 'order_id']}
+              modalRef={modalRef} // Added modalRef
+            />
           </div>
         </div>
         <DialogFooter>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
