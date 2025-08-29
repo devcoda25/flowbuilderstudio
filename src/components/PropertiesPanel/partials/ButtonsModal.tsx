@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import dynamic from 'next/dynamic';
 import { Trash2 } from 'lucide-react';
 import { useFlowStore } from '@/store/flow';
+import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
+import { MediaPart } from '@/types/MediaPart';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
   ssr: false,
@@ -29,6 +30,7 @@ type FormValues = {
   quickReplies: QuickReply[];
   variableName?: string;
   mediaHeader?: boolean;
+  parts?: ContentPart[];
 };
 
 type ButtonsModalProps = {
@@ -44,28 +46,41 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
     getNode: (id: string) => state.nodes.find((n) => n.id === id),
     updateNodeData: state.updateNodeData,
   }));
-  
+
   const node = getNode(nodeId);
 
   const methods = useForm<FormValues>({
-    defaultValues: React.useMemo(() => ({
-      content: 'Ask a question here',
-      quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-      ...node?.data,
-    }), [node?.data]),
+    defaultValues: React.useMemo(
+      () => ({
+        content: 'Ask a question here',
+        quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
+        parts: [],
+        ...node?.data,
+      }),
+      [node?.data]
+    ),
   });
 
-  const { control, handleSubmit, register, reset } = methods;
+  const { control, handleSubmit, register, reset, setValue, getValues } = methods;
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "quickReplies"
+    name: 'quickReplies',
   });
+
+  const modalRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
+    if (!media) return; // Modal opened, but no media saved yet
+    const currentParts = getValues('parts') || [];
+    setValue('parts', [...currentParts, { id: nanoid(), type, url: media.url, name: media.name }]);
+  };
 
   React.useEffect(() => {
     if (isOpen && node) {
       reset({
         content: 'Ask a question here',
         quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
+        parts: [],
         ...node.data,
       });
     }
@@ -75,12 +90,12 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
     updateNodeData(nodeId, data);
     onClose();
   };
-  
+
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" ref={modalRef}>
         <DialogHeader>
           <DialogTitle>Configure Buttons</DialogTitle>
         </DialogHeader>
@@ -90,16 +105,24 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
               <div className="space-y-6 p-4">
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <Label htmlFor="media-header-switch">Media Header</Label>
-                  <Controller name="mediaHeader" control={control} render={({ field }) => <Switch id="media-header-switch" checked={field.value} onCheckedChange={field.onChange} />} />
+                  <Controller
+                    name="mediaHeader"
+                    control={control}
+                    render={({ field }) => <Switch id="media-header-switch" checked={field.value} onCheckedChange={field.onChange} />}
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Header Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
+                  <Label>
+                    Header Text <span className="text-muted-foreground">(optional, max 60 chars)</span>
+                  </Label>
                   <Input {...register('headerText')} placeholder="E.g. Choose your destiny" className="max-w-md" />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Body Text <span className="text-muted-foreground">(required, max 1024 chars)</span></Label>
+                  <Label>
+                    Body Text <span className="text-muted-foreground">(required, max 1024 chars)</span>
+                  </Label>
                   <Controller
                     name="content"
                     control={control}
@@ -109,13 +132,17 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                         onChange={field.onChange}
                         placeholder="Ask a question..."
                         variables={['name', 'email', 'order_id']}
+                        modalRef={modalRef}
+                        onAddMedia={handleAddMedia}
                       />
                     )}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Footer Text <span className="text-muted-foreground">(optional, max 60 chars)</span></Label>
+                  <Label>
+                    Footer Text <span className="text-muted-foreground">(optional, max 60 chars)</span>
+                  </Label>
                   <Input {...register('footerText')} placeholder="E.g. Reply to this message" className="max-w-md" />
                 </div>
 
@@ -124,15 +151,15 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                   {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
                       <Input {...register(`quickReplies.${index}.label`)} placeholder={`Button ${index + 1}`} />
-                       <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                       </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
                   ))}
-                  
+
                   {fields.length < MAX_BUTTONS && (
-                     <Button type="button" variant="outline" size="sm" onClick={() => append({ id: nanoid(), label: '' })}>
-                        + Add Button
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ id: nanoid(), label: '' })}>
+                      + Add Button
                     </Button>
                   )}
                 </div>
@@ -141,11 +168,12 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                   <Label>Save Answer In Variable</Label>
                   <Input {...register('variableName')} placeholder="@value" className="max-w-sm" />
                 </div>
-
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
-              <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+              <Button variant="ghost" type="button" onClick={onClose}>
+                Cancel
+              </Button>
               <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
