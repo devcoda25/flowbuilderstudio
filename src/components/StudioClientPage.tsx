@@ -33,8 +33,8 @@ import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
 import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
+import { MediaPart } from '@/types/MediaPart';
 import { useToast } from '@/hooks/use-toast';
-import { MediaPart } from '@/types/MediaPart'; // Import shared MediaPart type
 
 type ModalState = {
   type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question';
@@ -42,6 +42,12 @@ type ModalState = {
   data?: any;
   partId?: string;
 } | null;
+
+const isMediaPart = (
+  part: ContentPart | undefined
+): part is ContentPart & { type: 'image' | 'video' | 'audio' | 'document'; url?: string; name?: string } => {
+  return !!part && ['image', 'video', 'audio', 'document'].includes(part.type);
+};
 
 function StudioPageContent() {
   const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd, setEdges } = useFlowStore();
@@ -109,7 +115,7 @@ function StudioPageContent() {
   const openAttachmentModal = useCallback((nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
-    const part = (node.data.parts || []).find((p: any) => p.id === partId);
+    const part = (node.data.parts || []).find((p: ContentPart) => p.id === partId);
     setModalState({ type, nodeId, partId, data: part });
   }, [nodes]);
 
@@ -141,16 +147,26 @@ function StudioPageContent() {
 
     if (existingPartIndex > -1) {
       newParts = [...(node.data.parts || [])];
-      newParts[existingPartIndex] = { ...newParts[existingPartIndex], ...newMediaArray[0] };
+      newParts[existingPartIndex] = {
+        id: newParts[existingPartIndex].id,
+        type: newMediaArray[0].type,
+        url: newMediaArray[0].url,
+        name: newMediaArray[0].name,
+      };
 
       if (newMediaArray.length > 1) {
-        const additionalParts = newMediaArray.slice(1).map(media => ({ id: media.id, ...media }));
+        const additionalParts = newMediaArray.slice(1).map(media => ({
+          id: media.id,
+          type: media.type,
+          url: media.url,
+          name: media.name,
+        }));
         newParts.splice(existingPartIndex + 1, 0, ...additionalParts);
       }
     } else {
       const partsToAdd = newMediaArray.map((media, index) => {
         const id = index === 0 ? modalState.partId! : media.id;
-        return { id, ...media };
+        return { id, type: media.type, url: media.url, name: media.name };
       });
       newParts = [...(node.data.parts || []), ...partsToAdd];
     }
@@ -221,7 +237,11 @@ function StudioPageContent() {
   const activePart = useMemo(() => {
     if (!modalState?.nodeId || !modalState?.partId) return undefined;
     const node = nodes.find(n => n.id === modalState.nodeId);
-    return node?.data.parts?.find((p: ContentPart) => p.id === modalState.partId);
+    const part = node?.data.parts?.find((p: ContentPart) => p.id === modalState.partId);
+    if (isMediaPart(part)) {
+      return part as MediaPart;
+    }
+    return undefined;
   }, [modalState, nodes]);
 
   return (
@@ -288,69 +308,93 @@ function StudioPageContent() {
       {modalState?.type === 'list' && modalState.nodeId && (
         <ListModal isOpen={true} onClose={() => setModalState(null)} nodeId={modalState.nodeId} />
       )}
-      <FlowsModal isOpen={modalState?.type === 'flows'} onClose={() => setModalState(null)} />
-      <ImageAttachmentModal
-        modalRef={modalRef}
-        isOpen={modalState?.type === 'image'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveMedia}
-        onDelete={onDeleteMedia}
-        media={activePart}
-      />
-      <VideoAttachmentModal
-        modalRef={modalRef}
-        isOpen={modalState?.type === 'video'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveMedia}
-        onDelete={onDeleteMedia}
-        media={activePart}
-      />
-      <AudioAttachmentModal
-        modalRef={modalRef}
-        isOpen={modalState?.type === 'audio'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveMedia}
-        onDelete={onDeleteMedia}
-        media={activePart}
-      />
-      <DocumentAttachmentModal
-        modalRef={modalRef}
-        isOpen={modalState?.type === 'document'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveMedia}
-        onDelete={onDeleteMedia}
-        media={activePart}
-      />
-      <WebhookModal
-        isOpen={modalState?.type === 'webhook'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
-      />
-      <ConditionModal
-        isOpen={modalState?.type === 'condition'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
-      />
-      <GoogleSheetsModal
-        isOpen={modalState?.type === 'googleSheets'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
-      />
-      <AssignUserModal
-        isOpen={modalState?.type === 'assignUser'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
-      />
-      <AssignTeamModal
-        isOpen={modalState?.type === 'assignTeam'}
-        onClose={() => setModalState(null)}
-        onSave={onSaveModal}
-        initialData={modalState?.data}
-      />
+      {modalState?.type === 'flows' && (
+        <FlowsModal isOpen={true} onClose={() => setModalState(null)} />
+      )}
+      {modalState?.type === 'image' && modalState.nodeId && modalState.partId && (
+        <ImageAttachmentModal
+          modalRef={modalRef}
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveMedia}
+          onDelete={onDeleteMedia}
+          media={activePart}
+          type={modalState.type}
+        />
+      )}
+      {modalState?.type === 'video' && modalState.nodeId && modalState.partId && (
+        <VideoAttachmentModal
+          modalRef={modalRef}
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveMedia}
+          onDelete={onDeleteMedia}
+          media={activePart}
+          type={modalState.type}
+        />
+      )}
+      {modalState?.type === 'audio' && modalState.nodeId && modalState.partId && (
+        <AudioAttachmentModal
+          modalRef={modalRef}
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveMedia}
+          onDelete={onDeleteMedia}
+          media={activePart}
+          type={modalState.type}
+        />
+      )}
+      {modalState?.type === 'document' && modalState.nodeId && modalState.partId && (
+        <DocumentAttachmentModal
+          modalRef={modalRef}
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveMedia}
+          onDelete={onDeleteMedia}
+          media={activePart}
+          type={modalState.type}
+        />
+      )}
+      {modalState?.type === 'webhook' && (
+        <WebhookModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
+      {modalState?.type === 'condition' && (
+        <ConditionModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
+      {modalState?.type === 'googleSheets' && (
+        <GoogleSheetsModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
+      {modalState?.type === 'assignUser' && (
+        <AssignUserModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
+      {modalState?.type === 'assignTeam' && (
+        <AssignTeamModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
 
       <TestConsole isOpen={isTestConsoleOpen} onClose={toggleTestConsole} engine={engine} flowId={meta.id} />
     </div>
