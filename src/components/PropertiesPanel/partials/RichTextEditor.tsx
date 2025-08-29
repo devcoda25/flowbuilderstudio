@@ -52,14 +52,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
+import VideoAttachmentModal from '@/components/PropertiesPanel/partials/VideoAttachmentModal';
+import AudioAttachmentModal from '@/components/PropertiesPanel/partials/AudioAttachmentModal';
+import DocumentAttachmentModal from '@/components/PropertiesPanel/partials/DocumentAttachmentModal';
 import { nanoid } from 'nanoid';
-
-type MediaPart = {
-  id: string;
-  type: 'image' | 'video' | 'audio' | 'document';
-  url?: string;
-  name?: string;
-};
+import { MediaPart } from '@/types/MediaPart'; // Import shared MediaPart type
 
 type RichTextEditorProps = {
   value: string;
@@ -67,7 +64,7 @@ type RichTextEditorProps = {
   placeholder?: string;
   variables?: string[];
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
-  modalRef: React.MutableRefObject<HTMLDivElement | null>; // Make modalRef required
+  modalRef: React.MutableRefObject<HTMLDivElement | null>;
 };
 
 const Toolbar = ({
@@ -524,21 +521,24 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     setModalType(null);
   };
 
-  const handleModalSave = (file: File) => {
+  const handleModalSave = (media: MediaPart | MediaPart[]) => {
     if (!editor) return;
-    const url = URL.createObjectURL(file);
-    if (modalType === 'image') {
-      editor.chain().focus().setImage({ src: url }).run();
-      onChange(editor.getHTML());
-    } else if (modalType && onAddMedia) {
-      const mediaPart: MediaPart = {
-        id: nanoid(),
-        type: modalType,
-        url,
-        name: file.name,
-      };
-      onAddMedia(modalType, mediaPart);
-    }
+    const mediaArray = Array.isArray(media) ? media : [media];
+    mediaArray.forEach((mediaItem) => {
+      if (!mediaItem.url) return;
+      if (modalType === 'image') {
+        editor.chain().focus().setImage({ src: mediaItem.url }).run();
+        onChange(editor.getHTML());
+      } else if (modalType && onAddMedia) {
+        const mediaPart: MediaPart = {
+          id: nanoid(),
+          type: modalType,
+          url: mediaItem.url,
+          name: mediaItem.name,
+        };
+        onAddMedia(modalType, mediaPart);
+      }
+    });
     handleModalClose();
   };
 
@@ -558,8 +558,35 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
       <div className="flex-grow overflow-y-auto">
         <EditorContent editor={editor} placeholder={placeholder} />
       </div>
-      {modalOpen && modalType && (
+      {modalOpen && modalType === 'image' && (
         <ImageAttachmentModal
+          modalRef={modalRef}
+          isOpen={modalOpen}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          type={modalType}
+        />
+      )}
+      {modalOpen && modalType === 'video' && (
+        <VideoAttachmentModal
+          modalRef={modalRef}
+          isOpen={modalOpen}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          type={modalType}
+        />
+      )}
+      {modalOpen && modalType === 'audio' && (
+        <AudioAttachmentModal
+          modalRef={modalRef}
+          isOpen={modalOpen}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          type={modalType}
+        />
+      )}
+      {modalOpen && modalType === 'document' && (
+        <DocumentAttachmentModal
           modalRef={modalRef}
           isOpen={modalOpen}
           onClose={handleModalClose}

@@ -1,63 +1,67 @@
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { File, FileText, FileSpreadsheet, FileJson, FileQuestion } from 'lucide-react';
-import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
-
-type MediaPart = { type: 'image' | 'video' | 'audio' | 'document', url: string, name?: string };
+import { nanoid } from 'nanoid';
+import { MediaPart } from '@/types/MediaPart';
 
 type DocumentAttachmentModalProps = {
+  modalRef: React.MutableRefObject<HTMLDivElement | null>;
   isOpen: boolean;
   onClose: () => void;
   onSave: (media: MediaPart | MediaPart[]) => void;
-  onDelete: () => void;
-  media?: ContentPart;
+  onDelete?: () => void; // Made optional to align with ImageAttachmentModal
+  media?: MediaPart;
+  type: 'image' | 'video' | 'audio' | 'document'; // Added type prop
 };
 
 const getFileIcon = (fileName?: string) => {
-    if (!fileName) return <File className="w-16 h-16 text-muted-foreground" />;
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-        case 'pdf': return <FileText className="w-16 h-16 text-primary" />;
-        case 'docx': return <FileText className="w-16 h-16 text-primary" />;
-        case 'txt': return <FileText className="w-16 h-16 text-muted-foreground" />;
-        case 'csv':
-        case 'xlsx': return <FileSpreadsheet className="w-16 h-16 text-accent" />;
-        case 'json': return <FileJson className="w-16 h-16 text-accent" />;
-        default: return <FileQuestion className="w-16 h-16 text-muted-foreground" />;
-    }
-}
+  if (!fileName) return <File className="w-16 h-16 text-muted-foreground" />;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf': return <FileText className="w-16 h-16 text-primary" />;
+    case 'docx': return <FileText className="w-16 h-16 text-primary" />;
+    case 'txt': return <FileText className="w-16 h-16 text-muted-foreground" />;
+    case 'csv':
+    case 'xlsx': return <FileSpreadsheet className="w-16 h-16 text-accent" />;
+    case 'json': return <FileJson className="w-16 h-16 text-accent" />;
+    default: return <FileQuestion className="w-16 h-16 text-muted-foreground" />;
+  }
+};
 
 export default function DocumentAttachmentModal({
+  modalRef,
   isOpen,
   onClose,
   onSave,
   onDelete,
-  media
+  media,
+  type,
 }: DocumentAttachmentModalProps) {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen && media && media.type === 'document') {
+    if (isOpen && media && media.type === type) {
       setUrl(media.url || '');
       setName(media.name || '');
     } else if (isOpen) {
       setUrl('');
       setName('');
     }
-  }, [media, isOpen]);
+  }, [media, isOpen, type]);
 
   const handleSave = () => {
     if (!url) return;
-    onSave({ type: 'document', url, name });
+    onSave({ id: nanoid(), type, url, name });
     onClose();
   };
-  
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -66,36 +70,19 @@ export default function DocumentAttachmentModal({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    if (files.length === 1) {
-        const file = files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            onSave({ type: 'document', url: e.target?.result as string, name: file.name });
-            onClose();
-        };
-        reader.readAsDataURL(file);
-    } else {
-        const newParts: MediaPart[] = [];
-        let processedCount = 0;
-        
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                newParts.push({ type: 'document', url: e.target?.result as string, name: file.name });
-                processedCount++;
-                if (processedCount === files.length) {
-                    onSave(newParts);
-                    onClose();
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-    }
+    const mediaArray: MediaPart[] = Array.from(files).map(file => ({
+      id: nanoid(),
+      type,
+      url: URL.createObjectURL(file),
+      name: file.name,
+    }));
+    onSave(mediaArray);
+    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent ref={modalRef}>
         <DialogHeader>
           <DialogTitle>Attach Document</DialogTitle>
           <DialogDescription>Add a document to your message. Provide a URL or upload a file. You can select multiple files.</DialogDescription>
@@ -125,7 +112,7 @@ export default function DocumentAttachmentModal({
         </div>
         <DialogFooter className="justify-between">
           <div>
-            {media && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
+            {media && onDelete && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>

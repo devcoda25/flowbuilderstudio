@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { Node } from 'reactflow';
 import { ReactFlowProvider, useReactFlow } from 'reactflow';
 import { nanoid } from 'nanoid';
@@ -35,6 +34,7 @@ import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { useToast } from '@/hooks/use-toast';
+import { MediaPart } from '@/types/MediaPart'; // Import shared MediaPart type
 
 type ModalState = {
   type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question';
@@ -42,8 +42,6 @@ type ModalState = {
   data?: any;
   partId?: string;
 } | null;
-
-type MediaPart = { url: string; name?: string; type: 'image' | 'video' | 'audio' | 'document' };
 
 function StudioPageContent() {
   const { nodes, edges, addNode, setNodes, onNodesChange, onEdgesChange, onConnect, updateNodeData, onConnectStart, onConnectEnd, setEdges } = useFlowStore();
@@ -59,18 +57,19 @@ function StudioPageContent() {
 
   const engine = useMemo(() => new FlowEngine({ channel: meta.channels[0], clock: 'real' }), [meta.channels]);
   const { project } = useReactFlow();
-  
+
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
 
   useEffect(() => {
     if (activeFlow) {
-        const { nodes, edges, ...meta } = activeFlow;
-        setNodes(nodes);
-        setEdges(edges);
-        setMeta(meta);
+      const { nodes, edges, ...meta } = activeFlow;
+      setNodes(nodes);
+      setEdges(edges);
+      setMeta(meta);
     }
   }, [activeFlow?.id, setNodes, setEdges, setMeta, activeFlow]);
-
 
   engine.setFlow(nodes, edges);
 
@@ -80,30 +79,30 @@ function StudioPageContent() {
     if (nodeLabel === 'Send a Message') return;
 
     if (nodeLabel === 'Question') {
-        setModalState({ type: 'question', nodeId: node.id });
-        return;
+      setModalState({ type: 'question', nodeId: node.id });
+      return;
     }
 
     if (nodeLabel === 'Buttons') {
-        setModalState({ type: 'buttons', nodeId: node.id });
-        return;
+      setModalState({ type: 'buttons', nodeId: node.id });
+      return;
     }
 
     if (nodeLabel === 'List') {
-        setModalState({ type: 'list', nodeId: node.id });
-        return;
+      setModalState({ type: 'list', nodeId: node.id });
+      return;
     }
-    
+
     if (nodeLabel === 'Webhook') {
-        setModalState({ type: 'webhook', nodeId: node.id, data: node.data });
+      setModalState({ type: 'webhook', nodeId: node.id, data: node.data });
     } else if (nodeLabel === 'Set a Condition') {
-        setModalState({ type: 'condition', nodeId: node.id, data: { groups: node.data.groups } });
+      setModalState({ type: 'condition', nodeId: node.id, data: { groups: node.data.groups } });
     } else if (nodeLabel === 'Google Sheets') {
-        setModalState({ type: 'googleSheets', nodeId: node.id, data: node.data });
+      setModalState({ type: 'googleSheets', nodeId: node.id, data: node.data });
     } else if (nodeLabel === 'Assign to User') {
-        setModalState({ type: 'assignUser', nodeId: node.id, data: node.data });
+      setModalState({ type: 'assignUser', nodeId: node.id, data: node.data });
     } else if (nodeLabel === 'Assign to Team') {
-        setModalState({ type: 'assignTeam', nodeId: node.id, data: node.data });
+      setModalState({ type: 'assignTeam', nodeId: node.id, data: node.data });
     }
   }, []);
 
@@ -113,7 +112,7 @@ function StudioPageContent() {
     const part = (node.data.parts || []).find((p: any) => p.id === partId);
     setModalState({ type, nodeId, partId, data: part });
   }, [nodes]);
-  
+
   const openPropertiesForNode = useCallback((node: Node | null) => {
     setSelectedNodeId(node?.id || null);
   }, []);
@@ -121,13 +120,13 @@ function StudioPageContent() {
   const handleSaveNode = (nodeId: string, data: Record<string, any>) => {
     updateNodeData(nodeId, data);
   };
-  
+
   const onSaveModal = (data: any) => {
     if (!modalState || !modalState.nodeId) return;
     updateNodeData(modalState.nodeId, data);
     setModalState(null);
   };
-  
+
   const onSaveMedia = (newMedia: MediaPart | MediaPart[]) => {
     if (!modalState || !modalState.nodeId || !modalState.partId) return;
 
@@ -135,53 +134,51 @@ function StudioPageContent() {
     if (!node) return;
 
     const newMediaArray = Array.isArray(newMedia) ? newMedia : [newMedia];
-    
+
     const existingPartIndex = (node.data.parts || []).findIndex((p: ContentPart) => p.id === modalState.partId);
 
     let newParts: ContentPart[];
 
     if (existingPartIndex > -1) {
-        newParts = [...(node.data.parts || [])];
-        newParts[existingPartIndex] = { ...newParts[existingPartIndex], ...newMediaArray[0] };
-        
-        if (newMediaArray.length > 1) {
-            const additionalParts = newMediaArray.slice(1).map(media => ({ id: nanoid(), ...media }));
-            newParts.splice(existingPartIndex + 1, 0, ...additionalParts);
-        }
+      newParts = [...(node.data.parts || [])];
+      newParts[existingPartIndex] = { ...newParts[existingPartIndex], ...newMediaArray[0] };
+
+      if (newMediaArray.length > 1) {
+        const additionalParts = newMediaArray.slice(1).map(media => ({ id: media.id, ...media }));
+        newParts.splice(existingPartIndex + 1, 0, ...additionalParts);
+      }
     } else {
-        const partsToAdd = newMediaArray.map((media, index) => {
-            const id = index === 0 ? modalState.partId! : nanoid();
-            return { id, ...media };
-        });
-        newParts = [...(node.data.parts || []), ...partsToAdd];
+      const partsToAdd = newMediaArray.map((media, index) => {
+        const id = index === 0 ? modalState.partId! : media.id;
+        return { id, ...media };
+      });
+      newParts = [...(node.data.parts || []), ...partsToAdd];
     }
-    
+
     updateNodeData(modalState.nodeId, { parts: newParts });
     setModalState(null);
-}
+  };
 
-  
   const onDeleteMedia = () => {
     if (!modalState || !modalState.partId || !modalState.nodeId) return;
     const node = nodes.find(n => n.id === modalState.nodeId);
     if (node) {
-        const newParts = (node.data.parts || []).filter((p: ContentPart) => p.id !== modalState!.partId);
-        updateNodeData(modalState.nodeId, { parts: newParts });
+      const newParts = (node.data.parts || []).filter((p: ContentPart) => p.id !== modalState!.partId);
+      updateNodeData(modalState.nodeId, { parts: newParts });
     }
     setModalState(null);
-  }
-
-  const handleDragStart = (_e: React.DragEvent, item: PaletteItemPayload) => {
   };
+
+  const handleDragStart = (_e: React.DragEvent, item: PaletteItemPayload) => {};
 
   const handleClickAdd = (item: PaletteItemPayload) => {
     const { x, y } = project({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     const newNode: Node = {
       id: nanoid(),
       type: 'base',
-      position: { x: x - 200, y: y - 100 }, // Center it
-      data: { 
-        label: item.label, 
+      position: { x: x - 200, y: y - 100 },
+      data: {
+        label: item.label,
         icon: item.icon,
         type: item.type,
         color: item.color || getRandomColor(),
@@ -193,34 +190,34 @@ function StudioPageContent() {
     };
     addNode(newNode);
   };
-  
+
   const handleSaveFlow = useCallback(() => {
     saveFlow({ ...meta, nodes, edges });
     toast({
-        title: "Flow Saved",
-        description: `"${meta.title}" has been saved successfully.`,
+      title: 'Flow Saved',
+      description: `"${meta.title}" has been saved successfully.`,
     });
   }, [meta, nodes, edges, saveFlow, toast]);
 
   const handleNewFlow = () => {
     createNewFlow();
     toast({
-        title: "New Flow Created",
-        description: "A new empty flow has been created.",
+      title: 'New Flow Created',
+      description: 'A new empty flow has been created.',
     });
-  }
+  };
 
   const handleDeleteFlow = () => {
     if (window.confirm(`Are you sure you want to delete the flow "${meta.title}"? This cannot be undone.`)) {
-        deleteFlow(meta.id);
-        toast({
-            title: "Flow Deleted",
-            description: `"${meta.title}" has been deleted.`,
-            variant: "destructive"
-        });
+      deleteFlow(meta.id);
+      toast({
+        title: 'Flow Deleted',
+        description: `"${meta.title}" has been deleted.`,
+        variant: 'destructive',
+      });
     }
-  }
-  
+  };
+
   const activePart = useMemo(() => {
     if (!modalState?.nodeId || !modalState?.partId) return undefined;
     const node = nodes.find(n => n.id === modalState.nodeId);
@@ -232,26 +229,26 @@ function StudioPageContent() {
       <PublishBanner />
       <div className="col-span-full row-start-1 z-20">
         <HeaderBar
-            title={meta.title}
-            onSave={setTitle}
-            channels={meta.channels}
-            onChannelsChange={setChannels}
-            waContext={meta.waMessageContext}
-            onWaContextChange={setWaContext}
-            onUndo={undo}
-            onRedo={redo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onTest={toggleTestConsole}
-            onSaveClick={handleSaveFlow}
-            onNewFlow={handleNewFlow}
-            onOpenFlows={() => setModalState({ type: 'flows' })}
-            onDeleteFlow={handleDeleteFlow}
+          title={meta.title}
+          onSave={setTitle}
+          channels={meta.channels}
+          onChannelsChange={setChannels}
+          waContext={meta.waMessageContext}
+          onWaContextChange={setWaContext}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onTest={toggleTestConsole}
+          onSaveClick={handleSaveFlow}
+          onNewFlow={handleNewFlow}
+          onOpenFlows={() => setModalState({ type: 'flows' })}
+          onDeleteFlow={handleDeleteFlow}
         />
       </div>
       <aside className="hidden md:block col-start-1 row-start-2 overflow-y-auto border-r border-border z-10 bg-background">
         <div className="p-4 sidebar-scroll">
-            <SidebarPalette onDragStart={handleDragStart} onItemClick={handleClickAdd} filterChannels={meta.channels} />
+          <SidebarPalette onDragStart={handleDragStart} onItemClick={handleClickAdd} filterChannels={meta.channels} />
         </div>
       </aside>
       <main className="md:col-start-2 row-start-2 col-start-1 relative overflow-hidden bg-zinc-50">
@@ -270,44 +267,30 @@ function StudioPageContent() {
           viewportKey="flow-editor-viewport"
         />
       </main>
-      
+
       {selectedNodeId && (
         <PropertiesPanel
-            node={selectedNode}
-            onClose={() => setSelectedNodeId(null)}
-            onSave={handleSaveNode}
-            waContext={meta.waMessageContext}
-            channels={meta.channels}
+          node={selectedNode}
+          onClose={() => setSelectedNodeId(null)}
+          onSave={handleSaveNode}
+          waContext={meta.waMessageContext}
+          channels={meta.channels}
         />
       )}
-      
+
       {/* Modals for node functions */}
-       {modalState?.type === 'question' && modalState.nodeId &&
-          <QuestionModal
-            isOpen={true}
-            onClose={() => setModalState(null)}
-            nodeId={modalState.nodeId}
-          />
-        }
-       {modalState?.type === 'buttons' && modalState.nodeId &&
-          <ButtonsModal
-            isOpen={true}
-            onClose={() => setModalState(null)}
-            nodeId={modalState.nodeId}
-          />
-        }
-      {modalState?.type === 'list' && modalState.nodeId &&
-        <ListModal
-            isOpen={true}
-            onClose={() => setModalState(null)}
-            nodeId={modalState.nodeId}
-        />
-      }
-      <FlowsModal
-        isOpen={modalState?.type === 'flows'}
-        onClose={() => setModalState(null)}
-      />
+      {modalState?.type === 'question' && modalState.nodeId && (
+        <QuestionModal isOpen={true} onClose={() => setModalState(null)} nodeId={modalState.nodeId} />
+      )}
+      {modalState?.type === 'buttons' && modalState.nodeId && (
+        <ButtonsModal isOpen={true} onClose={() => setModalState(null)} nodeId={modalState.nodeId} />
+      )}
+      {modalState?.type === 'list' && modalState.nodeId && (
+        <ListModal isOpen={true} onClose={() => setModalState(null)} nodeId={modalState.nodeId} />
+      )}
+      <FlowsModal isOpen={modalState?.type === 'flows'} onClose={() => setModalState(null)} />
       <ImageAttachmentModal
+        modalRef={modalRef}
         isOpen={modalState?.type === 'image'}
         onClose={() => setModalState(null)}
         onSave={onSaveMedia}
@@ -315,6 +298,7 @@ function StudioPageContent() {
         media={activePart}
       />
       <VideoAttachmentModal
+        modalRef={modalRef}
         isOpen={modalState?.type === 'video'}
         onClose={() => setModalState(null)}
         onSave={onSaveMedia}
@@ -322,6 +306,7 @@ function StudioPageContent() {
         media={activePart}
       />
       <AudioAttachmentModal
+        modalRef={modalRef}
         isOpen={modalState?.type === 'audio'}
         onClose={() => setModalState(null)}
         onSave={onSaveMedia}
@@ -329,6 +314,7 @@ function StudioPageContent() {
         media={activePart}
       />
       <DocumentAttachmentModal
+        modalRef={modalRef}
         isOpen={modalState?.type === 'document'}
         onClose={() => setModalState(null)}
         onSave={onSaveMedia}
@@ -336,10 +322,10 @@ function StudioPageContent() {
         media={activePart}
       />
       <WebhookModal
-          isOpen={modalState?.type === 'webhook'}
-          onClose={() => setModalState(null)}
-          onSave={onSaveModal}
-          initialData={modalState?.data}
+        isOpen={modalState?.type === 'webhook'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
       />
       <ConditionModal
         isOpen={modalState?.type === 'condition'}
@@ -348,10 +334,10 @@ function StudioPageContent() {
         initialData={modalState?.data}
       />
       <GoogleSheetsModal
-          isOpen={modalState?.type === 'googleSheets'}
-          onClose={() => setModalState(null)}
-          onSave={onSaveModal}
-          initialData={modalState?.data}
+        isOpen={modalState?.type === 'googleSheets'}
+        onClose={() => setModalState(null)}
+        onSave={onSaveModal}
+        initialData={modalState?.data}
       />
       <AssignUserModal
         isOpen={modalState?.type === 'assignUser'}
@@ -366,17 +352,15 @@ function StudioPageContent() {
         initialData={modalState?.data}
       />
 
-
       <TestConsole isOpen={isTestConsoleOpen} onClose={toggleTestConsole} engine={engine} flowId={meta.id} />
     </div>
   );
 }
 
-
 export default function StudioClientPage() {
-    return (
-        <ReactFlowProvider>
-            <StudioPageContent />
-        </ReactFlowProvider>
-    )
+  return (
+    <ReactFlowProvider>
+      <StudioPageContent />
+    </ReactFlowProvider>
+  );
 }
