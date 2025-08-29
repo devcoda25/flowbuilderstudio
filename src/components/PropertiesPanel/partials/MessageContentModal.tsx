@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,6 +26,9 @@ export default function MessageContentModal({
 }: MessageContentModalProps) {
   const [text, setText] = useState('');
 
+  // Create a ref for the RichTextEditor
+  const modalRef = React.useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       setText(initialData?.content || '');
@@ -50,18 +52,19 @@ export default function MessageContentModal({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="message-text">Message Content</Label>
-              <RichTextEditor
-                  value={text}
-                  onChange={setText}
-                  placeholder="Type your message here..."
-                  onAddMedia={onAddMedia}
-                  variables={['name', 'email', 'order_id']}
-              />
+            <RichTextEditor
+              modalRef={modalRef} // Pass the ref
+              value={text}
+              onChange={setText}
+              placeholder="Type your message here..."
+              onAddMedia={onAddMedia}
+              variables={['name', 'email', 'order_id']}
+            />
           </div>
         </div>
         <DialogFooter>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
