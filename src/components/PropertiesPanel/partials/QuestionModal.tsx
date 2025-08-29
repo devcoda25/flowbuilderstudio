@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
     ssr: false,
     loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
+
 
 type FormValues = {
   content: string;
@@ -53,11 +55,8 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "answerVariants",
+    name: "answerVariants"
   });
-
-  // Create a ref for the RichTextEditor
-  const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (isOpen && node) {
@@ -71,6 +70,7 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
       });
     }
   }, [node, isOpen, reset]);
+
 
   const onSubmit = (data: FormValues) => {
     updateNodeData(nodeId, data);
@@ -86,12 +86,13 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
           <DialogTitle className="flex items-center justify-between">
             <span>Ask a Question</span>
           </DialogTitle>
-          <DialogDescription>Ask an open-ended question and save the user's reply.</DialogDescription>
+           <DialogDescription>Ask an open-ended question and save the user's reply.</DialogDescription>
         </DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] pr-4 -mr-4">
               <div className="space-y-6 p-4">
+                
                 <div className="space-y-2">
                   <Label>Question Text</Label>
                   <Controller
@@ -99,7 +100,6 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
                     control={control}
                     render={({ field }) => (
                       <RichTextEditor
-                        modalRef={modalRef} // Pass the ref
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Ask a question here"
@@ -110,28 +110,28 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
                 </div>
 
                 <div className="space-y-3 p-4 border rounded-lg">
-                  <Label>Answer Variants (optional)</Label>
-                  <p className="text-xs text-muted-foreground">Add expected variations of an answer, like "Hi" or "Hello".</p>
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2">
-                      <Controller
-                        name={`answerVariants.${index}.value` as const}
-                        control={control}
-                        render={({ field }) => <Input {...field} placeholder="e.g. Yes" />}
-                      />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                        <Trash2 className="w-4 h-4 text-destructive"/>
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>+ Add Variant</Button>
+                    <Label>Answer Variants (optional)</Label>
+                    <p className="text-xs text-muted-foreground">Add expected variations of an answer, like "Hi" or "Hello".</p>
+                     {fields.map((field, index) => (
+                        <div key={field.id} className="flex items-center gap-2">
+                           <Controller
+                                name={`answerVariants.${index}.value` as const}
+                                control={control}
+                                render={({ field }) => <Input {...field} placeholder="e.g. Yes" />}
+                            />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                <Trash2 className="w-4 h-4 text-destructive"/>
+                            </Button>
+                        </div>
+                     ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>+ Add Variant</Button>
                 </div>
 
                 <Separator />
                 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <Label htmlFor="accept-media-switch">Accept a media response</Label>
-                  <Controller name="acceptMedia" control={control} render={({ field }) => <Switch id="accept-media-switch" checked={field.value} onCheckedChange={field.onChange} />} />
+                    <Label htmlFor="accept-media-switch">Accept a media response</Label>
+                    <Controller name="acceptMedia" control={control} render={({ field }) => <Switch id="accept-media-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
                 
                 <Separator />
@@ -144,8 +144,8 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
                 <Separator />
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <Label htmlFor="advanced-switch">Advanced options</Label>
-                  <Controller name="advancedOptions" control={control} render={({ field }) => <Switch id="advanced-switch" checked={field.value} onCheckedChange={field.onChange} />} />
+                    <Label htmlFor="advanced-switch">Advanced options</Label>
+                    <Controller name="advancedOptions" control={control} render={({ field }) => <Switch id="advanced-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
 
               </div>

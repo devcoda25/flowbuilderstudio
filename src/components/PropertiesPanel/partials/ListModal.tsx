@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
     ssr: false,
     loading: () => <div className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2">Loading editor...</div>,
 });
+
 
 type ListItem = { id: string; title: string; description?: string };
 type ListSection = { id: string; title: string; items: ListItem[] };
@@ -67,9 +69,6 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
 
   const { reset } = methods;
 
-  // Create a ref for the RichTextEditor
-  const modalRef = React.useRef<HTMLDivElement>(null);
-
   React.useEffect(() => {
     if (isOpen && node) {
       const listData = node.data.list || {};
@@ -104,18 +103,17 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
               <div className="space-y-6 p-4">
                 <div className="space-y-2">
                   <Label>Body Text <span className="text-muted-foreground">(required, max 1024 chars)</span></Label>
-                  <Controller
-                    name="content"
-                    control={methods.control}
-                    render={({ field }) => (
-                      <RichTextEditor
-                        modalRef={modalRef} // Pass the ref
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        variables={['name', 'email', 'order_id']}
-                      />
-                    )}
-                  />
+                   <Controller
+                      name="content"
+                      control={methods.control}
+                      render={({ field }) => (
+                        <RichTextEditor
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          variables={['name', 'email', 'order_id']}
+                        />
+                      )}
+                    />
                 </div>
 
                 <div className="space-y-2">
@@ -147,6 +145,7 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
   );
 }
 
+
 function SectionsArray() {
   const { control } = useFormContext<ListData>();
   const { fields, append, remove } = useFieldArray({
@@ -156,20 +155,20 @@ function SectionsArray() {
 
   return (
     <div className="space-y-4 p-4 border rounded-lg">
-      <Label>Sections</Label>
+        <Label>Sections</Label>
       {fields.map((field, index) => (
         <div key={field.id} className="p-4 border rounded-lg bg-muted/50 space-y-4">
           <div className="flex items-center justify-between">
             <Label>Section {index + 1} Title <span className="text-muted-foreground">(optional, max 24 chars)</span></Label>
             <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => remove(index)}
-              disabled={fields.length <= 1}
-              className="text-destructive hover:text-destructive"
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => remove(index)}
+                disabled={fields.length <= 1}
+                className="text-destructive hover:text-destructive"
             >
-              <Trash2 className="w-4 h-4"/>
+                <Trash2 className="w-4 h-4"/>
             </Button>
           </div>
           <Input {...control.register(`sections.${index}.title`)} placeholder="Section Title" />
@@ -199,24 +198,24 @@ function ItemsArray({ sectionIndex }: { sectionIndex: number }) {
     <div className="space-y-3 pl-4 border-l-2">
       {fields.map((field, index) => (
         <div key={field.id} className="space-y-3 p-4 bg-background rounded-md shadow-sm border">
-          <div className="flex justify-between items-center">
-            <Label>Item {index + 1} Title <span className="text-muted-foreground ml-2">(required, max 24 chars)</span></Label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => remove(index)}
-              disabled={fields.length <= 1}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4"/>
-            </Button>
-          </div>
-          <Input {...control.register(`sections.${sectionIndex}.items.${index}.title`)} placeholder="Item title" />
-          <div className="space-y-2">
-            <Label>Description <span className="text-muted-foreground">(optional, max 72 chars)</span></Label>
-            <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Item description" />
-          </div>
+            <div className="flex justify-between items-center">
+                 <Label>Item {index + 1} Title<span className="text-muted-foreground ml-2">(required, max 24 chars)</span></Label>
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    disabled={fields.length <= 1}
+                    className="text-destructive hover:text-destructive"
+                 >
+                    <Trash2 className="w-4 h-4"/>
+                </Button>
+            </div>
+            <Input {...control.register(`sections.${sectionIndex}.items.${index}.title`)} placeholder="Item title" />
+            <div className="space-y-2">
+              <Label>Description <span className="text-muted-foreground">(optional, max 72 chars)</span></Label>
+              <Input {...control.register(`sections.${sectionIndex}.items.${index}.description`)} placeholder="Item description" />
+            </div>
         </div>
       ))}
       <Button variant="secondary" size="sm" type="button" onClick={() => append(defaultItem())}>+ Add Item</Button>

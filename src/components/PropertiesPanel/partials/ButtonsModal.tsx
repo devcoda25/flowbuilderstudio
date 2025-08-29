@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -57,11 +58,8 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
   const { control, handleSubmit, register, reset } = methods;
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "quickReplies",
+    name: "quickReplies"
   });
-
-  // Create a ref for the RichTextEditor
-  const modalRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (isOpen && node) {
@@ -92,13 +90,7 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
               <div className="space-y-6 p-4">
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <Label htmlFor="media-header-switch">Media Header</Label>
-                  <Controller
-                    name="mediaHeader"
-                    control={control}
-                    render={({ field }) => (
-                      <Switch id="media-header-switch" checked={field.value} onCheckedChange={field.onChange} />
-                    )}
-                  />
+                  <Controller name="mediaHeader" control={control} render={({ field }) => <Switch id="media-header-switch" checked={field.value} onCheckedChange={field.onChange} />} />
                 </div>
 
                 <div className="space-y-2">
@@ -113,7 +105,6 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                     control={control}
                     render={({ field }) => (
                       <RichTextEditor
-                        modalRef={modalRef} // Pass the ref
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Ask a question..."
@@ -133,15 +124,15 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                   {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
                       <Input {...register(`quickReplies.${index}.label`)} placeholder={`Button ${index + 1}`} />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                       <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                       </Button>
                     </div>
                   ))}
                   
                   {fields.length < MAX_BUTTONS && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ id: nanoid(), label: '' })}>
-                      + Add Button
+                     <Button type="button" variant="outline" size="sm" onClick={() => append({ id: nanoid(), label: '' })}>
+                        + Add Button
                     </Button>
                   )}
                 </div>
@@ -150,6 +141,7 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                   <Label>Save Answer In Variable</Label>
                   <Input {...register('variableName')} placeholder="@value" className="max-w-sm" />
                 </div>
+
               </div>
             </ScrollArea>
             <DialogFooter className="pt-6">
