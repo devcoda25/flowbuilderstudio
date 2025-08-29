@@ -1,182 +1,74 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+'use client';
+
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ImageIcon, FileX, Video, AudioLines, FileText } from 'lucide-react';
-import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
-
-type MediaPart = { type: 'image' | 'video' | 'audio' | 'document'; url: string; name?: string };
-
-// Type guard to check if media is a valid media-type ContentPart
-const isMediaPart = (
-  media: ContentPart | undefined
-): media is ContentPart & { type: 'image' | 'video' | 'audio' | 'document'; url?: string } => {
-  return media !== undefined && ['image', 'video', 'audio', 'document'].includes(media.type);
-};
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 type ImageAttachmentModalProps = {
+  modalRef: React.MutableRefObject<HTMLDivElement | null>;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (media: MediaPart | MediaPart[]) => void;
-  onDelete: () => void;
-  media?: ContentPart;
+  onSave: (file: File) => void;
+  type?: 'image' | 'video' | 'audio' | 'document'; // Make type optional
 };
 
-export default function ImageAttachmentModal({
-  isOpen,
-  onClose,
-  onSave,
-  onDelete,
-  media,
-}: ImageAttachmentModalProps) {
-  const [url, setUrl] = useState('');
-  const [isError, setIsError] = useState(false);
+export default function ImageAttachmentModal({ modalRef, isOpen, onClose, onSave, type }: ImageAttachmentModalProps) {
+  const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getIcon = () => {
-    if (isError) return <FileX className="w-16 h-16 text-destructive" />;
-    if (media?.type === 'video') return <Video className="w-16 h-16 text-muted-foreground" />;
-    if (media?.type === 'audio') return <AudioLines className="w-16 h-16 text-muted-foreground" />;
-    if (media?.type === 'document') return <FileText className="w-16 h-16 text-muted-foreground" />;
-    return <ImageIcon className="w-16 h-16 text-muted-foreground" />;
-  };
-
-  const getAcceptType = () => {
-    switch (media?.type) {
-      case 'video':
-        return 'video/*';
-      case 'audio':
-        return 'audio/*';
-      case 'document':
-        return '.pdf,.doc,.docx,.txt,.csv,.xlsx,.json';
-      case 'image':
-      default:
-        return 'image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.json';
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setFile(event.target.files[0]);
     }
   };
-
-  useEffect(() => {
-    if (isOpen) {
-      if (isMediaPart(media)) {
-        setUrl(media.url || '');
-      } else {
-        setUrl('');
-      }
-      setIsError(false);
-    }
-  }, [media, isOpen]);
-
-  useEffect(() => {
-    setIsError(false);
-  }, [url]);
 
   const handleSave = () => {
-    if (!url) return;
-    const type: MediaPart['type'] = isMediaPart(media) ? media.type : 'image';
-    onSave({ type, url });
-    onClose();
+    if (file) {
+      onSave(file);
+    }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const newParts: MediaPart[] = [];
-    let processedCount = 0;
-
-    const determineType = (fileType: string): MediaPart['type'] => {
-      if (fileType.startsWith('image/')) return 'image';
-      if (fileType.startsWith('video/')) return 'video';
-      if (fileType.startsWith('audio/')) return 'audio';
-      return 'document';
-    };
-
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const partType = determineType(file.type);
-        newParts.push({ type: partType, url: e.target?.result as string, name: file.name });
-        processedCount++;
-        if (processedCount === files.length) {
-          onSave(newParts);
-          onClose();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+  // Fallback title if type is undefined
+  const dialogTitle = type ? `${type.charAt(0).toUpperCase() + type.slice(1)}` : 'Media';
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent ref={modalRef} className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Attach Media</DialogTitle>
-          <DialogDescription>
-            Add an image, video, audio, or document to your message. Provide a URL or upload files.
-          </DialogDescription>
+          <DialogTitle>Upload {dialogTitle}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="flex items-center justify-center h-48 bg-muted rounded-md overflow-hidden">
-            {url && !isError && isMediaPart(media) ? (
-              media.type === 'image' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={url}
-                  alt="Image preview"
-                  width={200}
-                  height={200}
-                  className="object-contain max-h-full"
-                  onError={() => setIsError(true)}
-                  data-ai-hint="product photo"
-                />
-              ) : (
-                getIcon()
-              )
-            ) : (
-              getIcon()
-            )}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="image-url">Media URL</Label>
-            <Input
-              id="image-url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://placehold.co/600x400.png"
-            />
-          </div>
-          <div className="text-center text-sm text-muted-foreground">or</div>
           <input
             type="file"
             ref={fileInputRef}
+            accept={
+              type === 'image' ? 'image/*' :
+              type === 'video' ? 'video/*' :
+              type === 'audio' ? 'audio/*' :
+              '*/*'
+            }
             onChange={handleFileChange}
-            className="hidden"
-            accept={getAcceptType()}
-            multiple
           />
-          <Button variant="outline" type="button" onClick={handleUploadClick}>
-            Upload from device
-          </Button>
+          {file && (
+            <div>
+              <p>Selected file: {file.name}</p>
+              {type === 'image' && (
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt="Preview"
+                  className="max-w-full h-auto max-h-48"
+                />
+              )}
+            </div>
+          )}
         </div>
-        <DialogFooter className="justify-between">
-          <div>
-            {isMediaPart(media) && (
-              <Button variant="destructive" onClick={onDelete}>
-                Delete Attachment
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!url || isError}>
-              Save
-            </Button>
-          </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!file}>
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

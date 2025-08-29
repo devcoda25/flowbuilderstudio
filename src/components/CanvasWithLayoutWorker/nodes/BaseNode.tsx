@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Handle, Position, Node, useReactFlow } from 'reactflow';
+import { Handle, Position, Node as ReactFlowNode, useReactFlow } from 'reactflow';
 import styles from '../canvas-layout.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
@@ -19,7 +18,6 @@ import {
 import { useFlowStore } from '@/store/flow';
 import { Badge } from '@/components/ui/badge';
 import { nanoid } from 'nanoid';
-import { Input } from '@/components/ui/input';
 import dynamic from 'next/dynamic';
 import { useClickAway } from 'react-use';
 import { cn } from '@/lib/utils';
@@ -36,11 +34,18 @@ export type ContentPart =
   | { id: string; type: 'audio'; url?: string; name?: string }
   | { id: string; type: 'document'; url?: string; name?: string };
 
+type MediaPart = {
+  id: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  url?: string;
+  name?: string;
+};
+
 export type QuickReply = { id: string; label: string };
 
 type ListItem = { id: string; title: string; description?: string };
 type ListSection = { id: string; title: string; items: ListItem[] };
-type ListData = { content?: string, menuButtonText?: string; sections?: ListSection[] };
+type ListData = { content?: string; menuButtonText?: string; sections?: ListSection[] };
 
 export type BaseNodeData = {
   label: string;
@@ -55,8 +60,8 @@ export type BaseNodeData = {
   groups?: { type: 'and' | 'or'; conditions: { variable: string; operator: string; value: string }[] }[];
   quickReplies?: QuickReply[];
   list?: ListData;
-  onOpenProperties?: (node: Node) => void;
-  onNodeDoubleClick?: (node: Node, options?: { partId?: string; type?: string }) => void;
+  onOpenProperties?: (node: ReactFlowNode) => void;
+  onNodeDoubleClick?: (node: ReactFlowNode, options?: { partId?: string; type?: string }) => void;
   onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
@@ -101,12 +106,12 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const { getNode, getViewport, project } = useReactFlow();
   const [isEditing, setIsEditing] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
-  const isOpeningModal = useRef(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const migratedData = useMemo(() => migrateData(data), [data]);
   const parts = migratedData.parts || [];
   const textPart = useMemo(() => parts.find(p => p.type === 'text') as ContentPart & { type: 'text' } || { id: nanoid(), type: 'text', content: '' }, [parts]);
-  const mediaParts = useMemo(() => parts.filter(p => MEDIA_TYPES.includes(p.type)), [parts]);
+  const mediaParts = useMemo(() => parts.filter(p => MEDIA_TYPES.includes(p.type) && p.type !== 'image'), [parts]);
 
   const customStyle = {
     '--node-color': data.color || 'hsl(var(--primary))',
@@ -136,15 +141,17 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       setIsEditing(true);
       return;
     }
-    data.onNodeDoubleClick?.(thisNode, { partId, type });
+    data.onNodeDoubleClick?.(thisNode as ReactFlowNode, { partId, type });
   };
-  
-   useClickAway(nodeRef, () => {
-    if (isMessageNode && isEditing && !isOpeningModal.current) {
+
+  useClickAway(nodeRef, (event) => {
+    if (isMessageNode && isEditing) {
+      const target = event.target as HTMLElement | null;
+      if (modalRef.current && target && !modalRef.current.contains(target)) {
         setIsEditing(false);
+      }
     }
   });
-
 
   const updateButtonLabel = (buttonId: string, newLabel: string) => {
     const newReplies = (data.quickReplies || []).map((qr) => (qr.id === buttonId ? { ...qr, label: newLabel } : qr));
@@ -162,17 +169,15 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     updateNodeData(id, { parts: newParts });
   };
 
-  const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document') => {
-    isOpeningModal.current = true;
-    data.onOpenAttachmentModal?.(id, nanoid(), type);
-    setTimeout(() => { isOpeningModal.current = false; }, 500); // Reset after a delay
+  const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
+    if (!media || type === 'image') return; // Images are handled by RichTextEditor
+    const newPart: ContentPart = { id: media.id, type, url: media.url, name: media.name };
+    updateNodeData(id, { parts: [...parts, newPart] });
   };
 
   const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
     if (isMediaPart({ id: partId, type } as ContentPart)) {
-      isOpeningModal.current = true;
       data.onOpenAttachmentModal?.(id, partId, type as 'image' | 'video' | 'audio' | 'document');
-      setTimeout(() => { isOpeningModal.current = false; }, 500); // Reset after a delay
     }
   };
 
@@ -184,6 +189,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
           onChange={handleContentChange}
           variables={['name', 'email', 'order_id']}
           onAddMedia={handleAddMedia}
+          modalRef={modalRef}
         />
       ) : (
         <>
@@ -200,14 +206,6 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
                   onClick={(e) => { e.stopPropagation(); handleOpenAttachment(part.id, part.type); }}
                   title={isMediaPart(part) ? `Edit ${part.name || part.type}` : `Edit ${part.type}`}
                 >
-                  {part.type === 'image' && part.url && (
-                    <img
-                      src={part.url}
-                      alt={isMediaPart(part) ? part.name || 'attachment' : 'attachment'}
-                      className={styles.mediaGridImage}
-                      data-ai-hint="product photo"
-                    />
-                  )}
                   {part.type === 'video' && <Video className="w-8 h-8" />}
                   {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
                   {part.type === 'document' && getFileIcon(isMediaPart(part) ? part.name : undefined)}
@@ -258,10 +256,10 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
           </div>
         ))}
       </div>
-       <div className={listNodeStyles.buttons}>
+      <div className={listNodeStyles.buttons}>
         <div className={listNodeStyles.listButton}>
-            {data.list?.menuButtonText || 'Menu'}
-            <Handle type="source" position={Position.Right} id="list-button-default" className={listNodeStyles.handle} />
+          {data.list?.menuButtonText || 'Menu'}
+          <Handle type="source" position={Position.Right} id="list-button-default" className={listNodeStyles.handle} />
         </div>
       </div>
     </div>
@@ -293,7 +291,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {thisNode && data.onOpenProperties && (
-              <DropdownMenuItem onClick={() => data.onOpenProperties?.(thisNode)}>
+              <DropdownMenuItem onClick={() => data.onOpenProperties?.(thisNode as ReactFlowNode)}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Properties</span>
               </DropdownMenuItem>
@@ -392,7 +390,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       ) : isButtonsNode ? (
         null
       ) : isListNode ? (
-        null 
+        null
       ) : isMessageNode ? (
         <Handle type="source" position={Position.Right} className={styles.handle} />
       ) : (

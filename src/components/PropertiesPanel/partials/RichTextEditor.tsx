@@ -1,7 +1,6 @@
-
 'use client';
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -52,13 +51,23 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
+import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
+import { nanoid } from 'nanoid';
+
+type MediaPart = {
+  id: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  url?: string;
+  name?: string;
+};
 
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   variables?: string[];
-  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
+  modalRef: React.MutableRefObject<HTMLDivElement | null>; // Make modalRef required
 };
 
 const Toolbar = ({
@@ -68,7 +77,7 @@ const Toolbar = ({
 }: {
   editor: Editor | null;
   variables?: string[];
-  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
 }) => {
   if (!editor) {
     return null;
@@ -96,344 +105,340 @@ const Toolbar = ({
   };
 
   return (
-    <>
-      <div className="flex flex-wrap items-center gap-1 border-b border-input p-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          className="h-8 w-8"
-          title="Undo"
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          className="h-8 w-8"
-          title="Redo"
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" className="h-8 w-auto px-2 text-sm">
-              {editor.isActive('heading', { level: 1 }) ? (
-                <div className="flex items-center gap-2">
-                  <Heading1 className="h-4 w-4" /> Heading 1
-                </div>
-              ) : editor.isActive('heading', { level: 2 }) ? (
-                <div className="flex items-center gap-2">
-                  <Heading2 className="h-4 w-4" /> Heading 2
-                </div>
-              ) : editor.isActive('heading', { level: 3 }) ? (
-                <div className="flex items-center gap-2">
-                  <Heading3 className="h-4 w-4" /> Heading 3
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Pilcrow className="h-4 w-4" /> Normal
-                </div>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
-              Normal
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-              Heading 1
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-              Heading 2
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-              Heading 3
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          disabled={!editor.can().chain().focus().toggleBold().run()}
-          className={cn('h-8 w-8', editor.isActive('bold') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          disabled={!editor.can().chain().focus().toggleItalic().run()}
-          className={cn('h-8 w-8', editor.isActive('italic') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          disabled={!editor.can().chain().focus().toggleUnderline().run()}
-          className={cn('h-8 w-8', editor.isActive('underline') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Underline"
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          disabled={!editor.can().chain().focus().toggleStrike().run()}
-          className={cn('h-8 w-8', editor.isActive('strike') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Strikethrough"
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => (document.querySelector('input[type=color][data-id=color-picker]') as HTMLInputElement)?.click()}
-          title="Text Color"
-        >
-          <Palette className="h-4 w-4" />
-          <input
-            type="color"
-            data-id="color-picker"
-            className="sr-only"
-            onInput={(e) => editor.chain().focus().setColor(e.currentTarget.value).run()}
-            value={editor.getAttributes('textStyle').color || '#000000'}
-          />
-        </Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          className={cn('h-8 w-8', editor.isActive({ textAlign: 'left' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Align Left"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          className={cn('h-8 w-8', editor.isActive({ textAlign: 'center' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Align Center"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          className={cn('h-8 w-8', editor.isActive({ textAlign: 'right' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Align Right"
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={cn('h-8 w-8', editor.isActive('bulletList') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={cn('h-8 w-8', editor.isActive('orderedList') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={setLink}
-          className={cn('h-8 w-8', editor.isActive('link') ? 'is-active bg-accent text-accent-foreground' : '')}
-          title="Set Link"
-        >
-          <LinkIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => editor.chain().focus().unsetLink().run()}
-          disabled={!editor.isActive('link')}
-          title="Unlink"
-        >
-          <Unlink className="h-4 w-4" />
-        </Button>
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Table options">
-              <TableIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-            >
-              Insert Table
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => (document.querySelector('input[type=color][data-id=table-cell-color-picker]') as HTMLInputElement)?.click()}
-              disabled={!editor.can().setCellAttribute('backgroundColor', '#ffffff')}
-            >
-              Cell Background Color
-              <input
-                type="color"
-                data-id="table-cell-color-picker"
-                className="sr-only"
-                onInput={(e) => editor.chain().focus().setCellAttribute('backgroundColor', e.currentTarget.value).run()}
-              />
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              disabled={!editor.can().addColumnBefore()}
-            >
-              Add Column Before
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              disabled={!editor.can().addColumnAfter()}
-            >
-              Add Column After
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              disabled={!editor.can().deleteColumn()}
-            >
-              Delete Column
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              disabled={!editor.can().addRowBefore()}
-            >
-              Add Row Before
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              disabled={!editor.can().addRowAfter()}
-            >
-              Add Row After
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              disabled={!editor.can().deleteRow()}
-            >
-              Delete Row
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().mergeOrSplit().run()}
-              disabled={!editor.can().mergeOrSplit()}
-            >
-              Merge/Split Cell
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
-              disabled={!editor.can().toggleHeaderColumn()}
-            >
-              Toggle Header Column
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-              disabled={!editor.can().toggleHeaderRow()}
-            >
-              Toggle Header Row
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().toggleHeaderCell().run()}
-              disabled={!editor.can().toggleHeaderCell()}
-            >
-              Toggle Header Cell
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              disabled={!editor.can().deleteTable()}
-            >
-              Delete Table
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {onAddMedia && (
-          <>
-            <Separator orientation="vertical" className="h-6 mx-1" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
-                  <ImageIcon className="mr-2 h-4 w-4" />
-                  <span>Image</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
-                  <Video className="mr-2 h-4 w-4" />
-                  <span>Video</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
-                  <AudioLines className="mr-2 h-4 w-4" />
-                  <span>Audio</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Document</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
-        <Separator orientation="vertical" className="h-6 mx-1" />
-        {variables && variables.length > 0 && (
-            <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
-        )}
-      </div>
-    </>
+    <div className="flex flex-wrap items-center gap-1 border-b border-input p-1">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().undo()}
+        className="h-8 w-8"
+        title="Undo"
+      >
+        <Undo className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().redo()}
+        className="h-8 w-8"
+        title="Redo"
+      >
+        <Redo className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" className="h-8 w-auto px-2 text-sm">
+            {editor.isActive('heading', { level: 1 }) ? (
+              <div className="flex items-center gap-2">
+                <Heading1 className="h-4 w-4" /> Heading 1
+              </div>
+            ) : editor.isActive('heading', { level: 2 }) ? (
+              <div className="flex items-center gap-2">
+                <Heading2 className="h-4 w-4" /> Heading 2
+              </div>
+            ) : editor.isActive('heading', { level: 3 }) ? (
+              <div className="flex items-center gap-2">
+                <Heading3 className="h-4 w-4" /> Heading 3
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Pilcrow className="h-4 w-4" /> Normal
+              </div>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
+            Normal
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+            Heading 1
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+            Heading 2
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+            Heading 3
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        disabled={!editor.can().chain().focus().toggleBold().run()}
+        className={cn('h-8 w-8', editor.isActive('bold') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Bold"
+      >
+        <Bold className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        disabled={!editor.can().chain().focus().toggleItalic().run()}
+        className={cn('h-8 w-8', editor.isActive('italic') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Italic"
+      >
+        <Italic className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        disabled={!editor.can().chain().focus().toggleUnderline().run()}
+        className={cn('h-8 w-8', editor.isActive('underline') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Underline"
+      >
+        <UnderlineIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        disabled={!editor.can().chain().focus().toggleStrike().run()}
+        className={cn('h-8 w-8', editor.isActive('strike') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Strikethrough"
+      >
+        <Strikethrough className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => (document.querySelector('input[type=color][data-id=color-picker]') as HTMLInputElement)?.click()}
+        title="Text Color"
+      >
+        <Palette className="h-4 w-4" />
+        <input
+          type="color"
+          data-id="color-picker"
+          className="sr-only"
+          onInput={(e) => editor.chain().focus().setColor(e.currentTarget.value).run()}
+          value={editor.getAttributes('textStyle').color || '#000000'}
+        />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'left' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Left"
+      >
+        <AlignLeft className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'center' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Center"
+      >
+        <AlignCenter className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'right' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Right"
+      >
+        <AlignRight className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={cn('h-8 w-8', editor.isActive('bulletList') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Bullet List"
+      >
+        <List className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={cn('h-8 w-8', editor.isActive('orderedList') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Numbered List"
+      >
+        <ListOrdered className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={setLink}
+        className={cn('h-8 w-8', editor.isActive('link') ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Set Link"
+      >
+        <LinkIcon className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().unsetLink().run()}
+        disabled={!editor.isActive('link')}
+        title="Unlink"
+      >
+        <Unlink className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Table options">
+            <TableIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          >
+            Insert Table
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => (document.querySelector('input[type=color][data-id=table-cell-color-picker]') as HTMLInputElement)?.click()}
+            disabled={!editor.can().setCellAttribute('backgroundColor', '#ffffff')}
+          >
+            Cell Background Color
+            <input
+              type="color"
+              data-id="table-cell-color-picker"
+              className="sr-only"
+              onInput={(e) => editor.chain().focus().setCellAttribute('backgroundColor', e.currentTarget.value).run()}
+            />
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().addColumnBefore().run()}
+            disabled={!editor.can().addColumnBefore()}
+          >
+            Add Column Before
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            disabled={!editor.can().addColumnAfter()}
+          >
+            Add Column After
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            disabled={!editor.can().deleteColumn()}
+          >
+            Delete Column
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().addRowBefore().run()}
+            disabled={!editor.can().addRowBefore()}
+          >
+            Add Row Before
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            disabled={!editor.can().addRowAfter()}
+          >
+            Add Row After
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            disabled={!editor.can().deleteRow()}
+          >
+            Delete Row
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().mergeOrSplit().run()}
+            disabled={!editor.can().mergeOrSplit()}
+          >
+            Merge/Split Cell
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
+            disabled={!editor.can().toggleHeaderColumn()}
+          >
+            Toggle Header Column
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+            disabled={!editor.can().toggleHeaderRow()}
+          >
+            Toggle Header Row
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().toggleHeaderCell().run()}
+            disabled={!editor.can().toggleHeaderCell()}
+          >
+            Toggle Header Cell
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            disabled={!editor.can().deleteTable()}
+          >
+            Delete Table
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {onAddMedia && (
+        <>
+          <Separator orientation="vertical" className="h-6 mx-1" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
+                <Paperclip className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                <span>Image</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
+                <Video className="mr-2 h-4 w-4" />
+                <span>Video</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
+                <AudioLines className="mr-2 h-4 w-4" />
+                <span>Audio</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Document</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      )}
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      {variables && variables.length > 0 && (
+        <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
+      )}
+    </div>
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        // The History extension is part of StarterKit
-      }),
+      StarterKit.configure({}),
       Underline,
       TextStyle,
       Color,
@@ -503,6 +508,40 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     immediatelyRender: false,
   });
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'image' | 'video' | 'audio' | 'document' | null>(null);
+
+  const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
+    setModalType(type);
+    setModalOpen(true);
+    if (onAddMedia) {
+      onAddMedia(type);
+    }
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setModalType(null);
+  };
+
+  const handleModalSave = (file: File) => {
+    if (!editor) return;
+    const url = URL.createObjectURL(file);
+    if (modalType === 'image') {
+      editor.chain().focus().setImage({ src: url }).run();
+      onChange(editor.getHTML());
+    } else if (modalType && onAddMedia) {
+      const mediaPart: MediaPart = {
+        id: nanoid(),
+        type: modalType,
+        url,
+        name: file.name,
+      };
+      onAddMedia(modalType, mediaPart);
+    }
+    handleModalClose();
+  };
+
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
       editor.commands.setContent(value);
@@ -511,12 +550,23 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
 
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background">
-      <Toolbar editor={editor} variables={variables} onAddMedia={onAddMedia} />
+      <Toolbar
+        editor={editor}
+        variables={variables}
+        onAddMedia={handleMediaSelect}
+      />
       <div className="flex-grow overflow-y-auto">
         <EditorContent editor={editor} placeholder={placeholder} />
       </div>
+      {modalOpen && modalType && (
+        <ImageAttachmentModal
+          modalRef={modalRef}
+          isOpen={modalOpen}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          type={modalType}
+        />
+      )}
     </div>
   );
 }
-
-    
