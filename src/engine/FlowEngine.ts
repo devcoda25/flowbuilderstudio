@@ -14,7 +14,7 @@ export class FlowEngine {
   private status: EngineStatus = 'idle';
   private queue: string[] = [];
   private timers = new Set<number>();
-  private waiting: { nodeId: string; varName: string } | null = null;
+  private waiting: { nodeId: string; varName: string, kind: 'ask' | 'buttons' | 'list' } | null = null;
   private vars: Record<string, any> = {};
 
   constructor(opts?: EngineOptions) {
@@ -39,12 +39,21 @@ export class FlowEngine {
     this.setStatus('idle');
   }
 
-  start(nodeId?: string) {
+  start(flowId?: string) {
     if (!this.compiled) throw new Error('FlowEngine: setFlow() first');
     this.reset();
+    
+    // Explicitly check the zustand store for the designated start node ID.
     const startNodeIdFromStore = useFlowStore.getState().startNodeId;
-    const start = nodeId || startNodeIdFromStore || this.compiled.starts[0];
-    if (!start) return;
+
+    const start = startNodeIdFromStore || this.compiled.starts[0];
+
+    if (!start) {
+        this.bus.emit('error', { nodeId: 'N/A', message: 'No start node found for the flow.' });
+        this.setStatus('stopped');
+        return;
+    }
+    
     this.queue.push(start);
     this.setStatus('running');
     this.drain();
@@ -64,12 +73,36 @@ export class FlowEngine {
   pushUserInput(text: string) {
     this.vars.last_user_message = text;
     if (this.waiting) {
-      const { nodeId, varName } = this.waiting;
+      const { nodeId, varName, kind } = this.waiting;
       this.vars[varName] = text;
       this.waiting = null;
       this.setStatus('running');
-      const next = this.next(nodeId);
-      if (next) { this.queue.push(next); }
+      
+      let nextNodeId: string | null = null;
+      if (kind === 'buttons' || kind === 'list') {
+          // Find the edge corresponding to the button/item label that was clicked.
+          const outs = this.compiled?.next.get(nodeId) || [];
+          const sourceNode = this.compiled?.nodes.get(nodeId);
+          const replies = sourceNode?.data?.quickReplies || sourceNode?.data?.list?.sections?.flatMap((s:any) => s.items) || [];
+          const matchingReply = replies.find((r:any) => r.label === text || r.title === text);
+          if(matchingReply) {
+              const matchingEdge = outs.find(o => o.branch === matchingReply.id);
+              if (matchingEdge) {
+                  nextNodeId = matchingEdge.to;
+              }
+          }
+      } else { // 'ask'
+         nextNodeId = this.next(nodeId);
+      }
+
+      if (nextNodeId) { 
+        this.queue.push(nextNodeId);
+      } else {
+        // Handle default case if no matching button edge is found
+        const defaultEdge = (this.compiled?.next.get(nodeId) || []).find(e => !e.branch);
+        if (defaultEdge) this.queue.push(defaultEdge.to);
+      }
+
       this.drain();
     }
   }
@@ -97,7 +130,7 @@ export class FlowEngine {
     const want = truthy ? ['true','yes','1'] : ['false','no','0','else','default'];
     const e = outs.find(o => (o.branch && want.includes(String(o.branch).toLowerCase())) ||
                              (o.label && want.includes(String(o.label).toLowerCase())))
-           || outs[truthy ? 0 : 1];
+           || (truthy ? outs.find(o => o.branch === 'true') : outs.find(o => o.branch === 'false'));
     return e ? e.to : null;
   }
 
@@ -113,43 +146,58 @@ export class FlowEngine {
         this.bus.emit('error', { nodeId, message: e?.message || String(e) });
       }
     }
-    if (this.status === 'running' && this.queue.length === 0) {
+    if (this.status === 'running' && this.queue.length === 0 && !this.waiting && this.timers.size === 0) {
       this.setStatus('completed');
       this.bus.emit('done', { reason: 'completed' });
     }
   }
 
   private execute(n: RTNode): 'sync' | 'async' | 'wait' {
+    const data = n.data || {};
+    this.bus.emit('trace', { ts: Date.now(), type: 'enterNode', nodeId: n.id, nodeLabel: data.label,result: 'entering node' });
+
     switch (n.kind) {
       case 'message': {
-        const text = this.pickMessage(n);
-        const rendered = renderTemplate(text, this.vars);
-        this.emitBot(rendered, n.data.quickReplies);
+        const text = renderTemplate(data.content || data.label || '', this.vars);
+        this.emitBot(text, data.quickReplies);
         this.trace(n.id, `message("${trunc(text)}")`);
         const nx = this.next(n.id);
         if (nx) this.queue.push(nx);
         return 'sync';
       }
-      case 'ask': {
-        const varName = n.data?.varName || 'answer';
-        const prompt = n.data?.prompt ? renderTemplate(String(n.data.prompt), this.vars) : null;
-        if (prompt) this.emitBot(prompt);
-        this.waiting = { nodeId: n.id, varName };
+      case 'ask':
+      case 'buttons':
+      case 'list': {
+        const varName = data.variableName || 'answer';
+        const prompt = data.content ? renderTemplate(String(data.content), this.vars) : 'Please reply';
+        const buttons = n.kind === 'buttons' ? data.quickReplies : 
+                        n.kind === 'list' ? (data.list?.sections || []).flatMap((s:any) => s.items.map((i:any) => ({id: i.id, label: i.title}))) : [];
+        
+        this.emitBot(prompt, buttons.length > 0 ? buttons : undefined);
+        this.waiting = { nodeId: n.id, varName, kind: n.kind };
         this.setStatus('waiting');
         this.bus.emit('waitingForInput', { nodeId: n.id, varName });
-        this.trace(n.id, `ask("${varName}")`);
+        this.trace(n.id, `${n.kind}("${varName}")`);
         return 'wait';
       }
       case 'condition': {
-        const expr = String(n.data?.expression || '');
-        const res = evalExpression(expr, { ...this.vars });
+        const expr = String(data.groups?.[0]?.conditions?.[0]?.variable || ''); // Simplified for now
+        const val = String(data.groups?.[0]?.conditions?.[0]?.value || '');
+        const op = String(data.groups?.[0]?.conditions?.[0]?.operator || 'equals');
+        const contextVar = this.vars[expr];
+
+        let res = false;
+        if(op === 'equals') res = contextVar == val;
+        else if (op === 'contains') res = String(contextVar).includes(val);
+        else res = evalExpression(expr, { ...this.vars });
+        
         const tgt = this.chooseBranch(n.id, !!res);
         this.trace(n.id, `condition(${res ? 'true' : 'false'})`);
         if (tgt) this.queue.push(tgt);
         return 'sync';
       }
       case 'delay': {
-        const ms = parseDelay(n.data?.delay || n.data?.waitMs);
+        const ms = parseDelay(data.delay || data.waitMs);
         const id = this.clock.set(() => {
           this.trace(n.id, `delay ${ms}ms`);
           const nx = this.next(n.id);
@@ -164,7 +212,7 @@ export class FlowEngine {
         const req = this.buildApiRequest(n);
         sendTestRequest(req as any).then((res) => {
           this.vars.last_api_response = res;
-          if (n.data?.assignTo) this.vars[n.data.assignTo] = res;
+          if (data.assignTo) this.vars[data.assignTo] = res;
           this.trace(n.id, `api ${req.method} ${req.url} → ${res.statusCode}`);
           const nx = this.next(n.id);
           if (nx) this.queue.push(nx);
@@ -183,12 +231,6 @@ export class FlowEngine {
     }
   }
 
-  private pickMessage(n: RTNode): string {
-    const d = n.data || {};
-    if (typeof d.text === 'string') return d.text;
-    return d.label || '...';
-  }
-
   private buildApiRequest(n: RTNode) {
     const d = n.data?.api || n.data || {};
     const url = renderTemplate(String(d.url || ''), this.vars);
@@ -201,7 +243,7 @@ export class FlowEngine {
     return { url, method, headers, body };
   }
 
-  private emitBot(text: string, buttons?: { label: string }[]) {
+  private emitBot(text: string, buttons?: { id: string; label: string }[]) {
     this.bus.emit('botMessage', {
       id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
       text,

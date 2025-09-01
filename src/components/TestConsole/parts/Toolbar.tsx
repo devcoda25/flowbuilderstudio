@@ -54,7 +54,7 @@ export default function Toolbar({
         ) : (
           <Button size="sm" variant="outline" onClick={onPause} disabled={!busy} title="Pause"><Pause className="h-4 w-4"/></Button>
         )}
-        <Button size="sm" variant="outline" onClick={onStep} disabled={busy} title="Step"><SkipForward className="h-4 w-4"/></Button>
+        <Button size="sm" variant="outline" onClick={onStep} disabled={true} title="Step (Not implemented)"><SkipForward className="h-4 w-4"/></Button>
         <Button size="sm" variant="outline" onClick={onRestart} title="Restart"><RotateCcw className="h-4 w-4"/></Button>
       </div>
       

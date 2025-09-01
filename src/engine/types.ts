@@ -14,7 +14,10 @@ export type EngineOptions = {
 export type TraceEvent = {
   ts: number;
   nodeId: string;
+  type?: string; // Added to support 'enterNode' or other trace types
   result: string;
+  nodeLabel?: string; 
+  
 };
 
 export type BotMessage = {
