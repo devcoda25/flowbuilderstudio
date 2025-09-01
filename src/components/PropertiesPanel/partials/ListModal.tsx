@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,7 +27,7 @@ export type ListData = {
   buttonText?: string;
   variableName?: string;
   sections?: ListSection[];
-  parts?: ContentPart[]; // Added parts for media
+  parts?: ContentPart[];
 };
 
 type ListModalProps = {
@@ -64,19 +66,22 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
         sections: listData.sections && listData.sections.length > 0 ? listData.sections : [defaultSection()],
         footerText: listData.footerText || '',
         variableName: listData.variableName || '@value',
-        parts: node?.data.parts || [], // Initialize parts
+        parts: node?.data.parts || [],
       };
     }, [node?.data]),
   });
 
   const { reset, control, handleSubmit, register, setValue, getValues } = methods;
 
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-
   const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
     if (!media) return; // Modal opened, but no media saved yet
     const currentParts = getValues('parts') || [];
     setValue('parts', [...currentParts, { id: nanoid(), type, url: media.url, name: media.name }]);
+  };
+
+  const handleDeleteAttachment = (id: string) => {
+    const currentParts = getValues('parts') || [];
+    setValue('parts', currentParts.filter((part) => part.id !== id));
   };
 
   React.useEffect(() => {
@@ -103,13 +108,13 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl" ref={modalRef}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Configure List Message</DialogTitle>
           <DialogDescription>Create a list of options for the user to choose from.</DialogDescription>
         </DialogHeader>
         <FormProvider {...methods}>
-          <form onSubmit={methods.handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <ScrollArea className="h-[70vh] pr-6">
               <div className="space-y-6 p-4">
                 <div className="space-y-2">
@@ -122,8 +127,9 @@ export default function ListModal({ isOpen, onClose, nodeId }: ListModalProps) {
                         value={field.value || ''}
                         onChange={field.onChange}
                         variables={['name', 'email', 'order_id']}
-                        modalRef={modalRef}
-                        onAddMedia={handleAddMedia} // Enable media support
+                        onAddMedia={handleAddMedia}
+                        attachments={getValues('parts') as MediaPart[]}
+                        onDeleteAttachment={handleDeleteAttachment}
                       />
                     )}
                   />
