@@ -56,7 +56,7 @@ import type { MediaPart } from '@/types/MediaPart';
 import ImageComponent from 'next/image';
 import styles from '@/components/CanvasWithLayoutWorker/canvas-layout.module.css';
 
-type RichTextEditorProps = {
+export type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -64,7 +64,9 @@ type RichTextEditorProps = {
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
   attachments?: MediaPart[];
   onDeleteAttachment?: (id: string) => void;
+  modalRef?: React.RefObject<HTMLDivElement | null>;
 };
+
 
 const getFileIcon = (fileName?: string) => {
     if (!fileName) return <FileText className="w-8 h-8" />;
@@ -435,13 +437,13 @@ const Toolbar = ({
       )}
       <Separator orientation="vertical" className="h-6 mx-1" />
       {variables && variables.length > 0 && (
-        <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} />
+        <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} label="{{}}" />
       )}
     </div>
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, attachments, onDeleteAttachment }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, attachments, onDeleteAttachment, modalRef }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({}),
@@ -510,31 +512,35 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         class:
           'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]',
       },
-      // This is the crucial part to prevent Tiptap from interfering with our React component's events
       handleDOMEvents: {
         mousedown: (view, event) => {
           const target = event.target as HTMLElement;
-          // If the click is on a delete button, let React handle it and stop Tiptap
           if (target.closest(`.${styles.deletePartButton}`)) {
-            return true; // Stop Tiptap's event handling
+            return true;
           }
-          return false; // Let Tiptap handle the event
+          return false;
         },
-      },
-      // Tell Tiptap to not re-render our React attachment components
-      ignoreMutation: (mutation) => {
-        if (mutation.type === 'attributes' && (mutation.target as HTMLElement).hasAttribute('data-attachment-list-editor')) {
-          return true;
+        drop: (view, event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest(`[data-attachment-list-editor]`)) {
+                return true;
+            }
+            return false;
+        },
+        dragstart: (view, event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest(`[data-attachment-list-editor]`)) {
+                return true;
+            }
+            return false;
         }
-        return false;
-      }
+      },
     },
-    immediatelyRender: false,
   });
 
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(value, false);
     }
   }, [value, editor]);
 
@@ -549,7 +555,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         <EditorContent editor={editor} placeholder={placeholder} />
         
         {attachments && attachments.length > 0 && (
-            <div className={cn(styles.attachmentList, styles.attachmentListEditor)} data-attachment-list-editor>
+            <div className={cn(styles.attachmentList, styles.attachmentListEditor)} data-attachment-list-editor contentEditable={false}>
                 {attachments.map(part => (
                     <div key={part.id} className={styles.attachmentItem}>
                         {part.type === 'image' && part.url ? (

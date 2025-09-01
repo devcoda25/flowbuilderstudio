@@ -1,12 +1,8 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import dynamic from 'next/dynamic';
-import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
-import { MediaPart } from '@/types/MediaPart';
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
   ssr: false,
@@ -16,9 +12,9 @@ const RichTextEditor = dynamic(() => import('./RichTextEditor'), {
 type MessageContentModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { content: string; parts?: ContentPart[] }) => void;
-  initialData?: { content: string; parts?: ContentPart[] };
-  onAddMedia: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
+  onSave: (data: { content: string }) => void;
+  initialData?: { content: string; parts?: any[] };
+  onAddMedia: (type: 'image' | 'video' | 'audio' | 'document') => void;
 };
 
 export default function MessageContentModal({
@@ -29,29 +25,24 @@ export default function MessageContentModal({
   onAddMedia,
 }: MessageContentModalProps) {
   const [text, setText] = useState('');
-  const [parts, setParts] = useState<ContentPart[]>([]);
+  const modalRef = React.useRef<HTMLDivElement | null>(null); // Added modalRef
 
   useEffect(() => {
     if (isOpen) {
       setText(initialData?.content || '');
-      setParts(initialData?.parts || []);
     }
   }, [initialData, isOpen]);
 
   const handleSave = () => {
-    onSave({ content: text, parts });
+    onSave({ content: text });
     onClose();
-  };
-
-  const handleDeleteAttachment = (id: string) => {
-    setParts(parts.filter((part) => part.id !== id));
   };
 
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" ref={modalRef}>
         <DialogHeader>
           <DialogTitle>Edit Message</DialogTitle>
           <DialogDescription>Modify the rich text content of your message below.</DialogDescription>
@@ -65,8 +56,7 @@ export default function MessageContentModal({
               placeholder="Type your message here..."
               onAddMedia={onAddMedia}
               variables={['name', 'email', 'order_id']}
-              attachments={parts as MediaPart[]}
-              onDeleteAttachment={handleDeleteAttachment}
+              modalRef={modalRef} // Added modalRef
             />
           </div>
         </div>

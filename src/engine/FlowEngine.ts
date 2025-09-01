@@ -3,7 +3,7 @@ import { EventBus } from './EventBus';
 import { RealClock, MockClock, IClock } from './clock';
 import { evalExpression, parseDelay, renderTemplate } from './evaluator';
 import { compile, Compiled, RTNode } from './FlowCompiler';
-import type { EngineEventMap, EngineOptions, FlowState, Channel, EngineStatus, Attachment } from './types';
+import type { EngineEventMap, EngineOptions,  Channel, EngineStatus, Attachment } from './types';
 import { sendTestRequest } from '@/api/mockServer';
 import { useFlowStore } from '@/store/flow';
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
@@ -13,9 +13,13 @@ const isMediaPart = (part: ContentPart): part is ({ id: string } & MediaPart) =>
     return ['image', 'video', 'audio', 'document'].includes(part.type as string);
 };
 
+function trunc(s: string, n = 80) {
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
 export class FlowEngine {
   private bus = new EventBus<EngineEventMap>();
-  private opts: Required<EngineOptions> = { channel: 'whatsapp', clock: 'real' };
+  private opts: Required<EngineOptions> = { channel: 'whatsapp', clock: 'real', initialVars: {} };
   private clock: IClock = new RealClock();
   private compiled: Compiled | null = null;
   private status: EngineStatus = 'idle';
@@ -31,6 +35,7 @@ export class FlowEngine {
   configure(opts: EngineOptions) {
     this.opts = { ...this.opts, ...opts };
     this.clock = this.opts.clock === 'mock' ? new MockClock() : new RealClock();
+    this.vars = { ...(this.opts.initialVars || {}) };
   }
 
   setFlow(nodes: any[], edges: any[]) {
@@ -40,7 +45,7 @@ export class FlowEngine {
   reset() {
     this.queue = [];
     this.waiting = null;
-    this.vars = {};
+    this.vars = { ...(this.opts.initialVars || {}) };
     this.timers.forEach((t) => this.clock.clear(t));
     this.timers.clear();
     this.setStatus('idle');
@@ -245,32 +250,30 @@ export class FlowEngine {
   }
 
   private buildApiRequest(n: RTNode) {
-    const d = n.data?.api || n.data || {};
-    const url = renderTemplate(String(d.url || ''), this.vars);
-    const method = String(d.method || 'POST').toUpperCase();
-    const headers = Array.isArray(d.headers) ? d.headers.map((h: any) => ({
-      key: h.key, value: renderTemplate(String(h.value), this.vars)
-    })) : [];
-    let body = d.body;
-    if (typeof body === 'string') body = renderTemplate(body, this.vars);
-    return { url, method, headers, body };
+    const { url = '', method = 'GET', headers = [], body = '' } = n.data;
+    return {
+      url: renderTemplate(url, this.vars),
+      method: method.toUpperCase(),
+      headers: headers.map(({key, value}: {key:string, value: string}) => ({
+        key: renderTemplate(key, this.vars),
+        value: renderTemplate(value, this.vars),
+      })),
+      body: renderTemplate(body, this.vars)
+    };
   }
 
-  private emitBot(text: string, buttons?: { id: string; label: string }[], attachments?: Attachment[]) {
-    this.bus.emit('botMessage', {
-      id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+  private trace(nodeId: string, result: string, data?: any) {
+    this.bus.emit('trace', { ts: Date.now(), type: 'log', nodeId, result, data });
+  }
+
+  private emitBot(text: string, quickReplies?: any[], attachments?: Attachment[]) {
+    const msg: EngineEventMap['botMessage'] = {
+      id: crypto.randomUUID(),
+      channel: this.opts.channel,
       text,
-      channel: this.opts.channel as Channel,
-      actions: { buttons },
-      attachments
-    });
+      actions: quickReplies ? { buttons: quickReplies } : undefined,
+      attachments,
+    };
+    this.bus.emit('botMessage', msg);
   }
-
-  private trace(nodeId: string, result: string) {
-    this.bus.emit('trace', { ts: Date.now(), nodeId, result });
-  }
-}
-
-function trunc(s: string, n = 40) {
-  return s.length > n ? s.slice(0, n) + '…' : s;
 }

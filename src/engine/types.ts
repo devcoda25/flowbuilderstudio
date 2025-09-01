@@ -35,18 +35,21 @@ export type TraceEvent = {
   data?: unknown;
 };
 
-export type BotMessage = {
-  id: string;
-  text: string;
-  channel: Channel;
-  actions?: {
-    buttons?: QuickReply[];
-  };
-  attachments?: Attachment[];
-};
-
 export type EngineStatus = 'idle' | 'running' | 'waiting' | 'stopped' | 'completed';
 
+export type BotMessage = {
+    id: string;
+    text: string;
+    channel: Channel;
+    actions?: { buttons?: QuickReply[] };
+    attachments?: Attachment[];
+}
+
+export type EngineOptions = {
+  channel?: Channel;
+  clock?: 'real' | 'mock';
+  initialVars?: Record<string, any>;
+};
 
 export type TestConsoleProps = {
   isOpen: boolean;
