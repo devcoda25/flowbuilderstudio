@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,7 +27,7 @@ type FormValues = {
   acceptMedia: boolean;
   variableName: string;
   advancedOptions: boolean;
-  parts?: ContentPart[]; // Added parts for media
+  parts?: ContentPart[];
 };
 
 type QuestionModalProps = {
@@ -49,7 +51,7 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
       acceptMedia: false,
       variableName: '@value',
       advancedOptions: false,
-      parts: [], // Initialize parts
+      parts: [],
       ...node?.data,
     }), [node?.data]),
   });
@@ -61,12 +63,15 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
     name: 'answerVariants',
   });
 
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-
   const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
     if (!media) return; // Modal opened, but no media saved yet
     const currentParts = getValues('parts') || [];
     setValue('parts', [...currentParts, { id: nanoid(), type, url: media.url, name: media.name }]);
+  };
+
+  const handleDeleteAttachment = (id: string) => {
+    const currentParts = getValues('parts') || [];
+    setValue('parts', currentParts.filter((part) => part.id !== id));
   };
 
   React.useEffect(() => {
@@ -92,7 +97,7 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl" ref={modalRef}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Ask a Question</span>
@@ -114,8 +119,9 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
                         onChange={field.onChange}
                         placeholder="Ask a question here"
                         variables={['name', 'email', 'order_id']}
-                        modalRef={modalRef}
-                        onAddMedia={handleAddMedia} // Enable media support
+                        onAddMedia={handleAddMedia}
+                        attachments={getValues('parts') as MediaPart[]}
+                        onDeleteAttachment={handleDeleteAttachment}
                       />
                     )}
                   />
@@ -143,7 +149,11 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <Label htmlFor="accept-media-switch">Accept a media response</Label>
-                  <Controller name="acceptMedia" control={control} render={({ field }) => <Switch id="accept-media-switch" checked={field.value} onCheckedChange={field.onChange} />} />
+                  <Controller
+                    name="acceptMedia"
+                    control={control}
+                    render={({ field }) => <Switch id="accept-media-switch" checked={field.value} onCheckedChange={field.onChange} />}
+                  />
                 </div>
 
                 <Separator />
@@ -157,7 +167,11 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <Label htmlFor="advanced-switch">Advanced options</Label>
-                  <Controller name="advancedOptions" control={control} render={({ field }) => <Switch id="advanced-switch" checked={field.value} onCheckedChange={field.onChange} />} />
+                  <Controller
+                    name="advancedOptions"
+                    control={control}
+                    render={({ field }) => <Switch id="advanced-switch" checked={field.value} onCheckedChange={field.onChange} />}
+                  />
                 </div>
               </div>
             </ScrollArea>
