@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -5,7 +6,7 @@ import { Handle, Position, Node as ReactFlowNode, useReactFlow } from 'reactflow
 import styles from '../canvas-layout.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, Image as ImageIcon, Video, AudioLines, FileText, MessageSquare as MessageSquareIcon, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, Paperclip, FileText } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,8 @@ import { nanoid } from 'nanoid';
 import dynamic from 'next/dynamic';
 import { useClickAway } from 'react-use';
 import { cn } from '@/lib/utils';
+import { MediaPart } from '@/types/MediaPart';
+import Image from 'next/image';
 
 const RichTextEditor = dynamic(() => import('@/components/PropertiesPanel/partials/RichTextEditor'), {
   ssr: false,
@@ -29,16 +32,42 @@ const RichTextEditor = dynamic(() => import('@/components/PropertiesPanel/partia
 
 export type ContentPart =
   | { id: string; type: 'text'; content: string }
-  | { id: string; type: 'image'; url?: string; name?: string }
-  | { id: string; type: 'video'; url?: string; name?: string }
-  | { id: string; type: 'audio'; url?: string; name?: string }
-  | { id: string; type: 'document'; url?: string; name?: string };
+  | ({ id: string } & MediaPart);
 
-type MediaPart = {
-  id: string;
-  type: 'image' | 'video' | 'audio' | 'document';
-  url?: string;
-  name?: string;
+const MEDIA_TYPES: MediaPart['type'][] = ['image', 'video', 'audio', 'document'];
+
+const isMediaPart = (
+  part: ContentPart
+): part is { id: string } & MediaPart => {
+  return MEDIA_TYPES.includes(part.type as MediaPart['type']);
+};
+
+const migrateData = (data: BaseNodeData): BaseNodeData => {
+  if (typeof data.content === 'string' && !data.parts) {
+    return { ...data, parts: [{ id: nanoid(), type: 'text', content: data.content }] };
+  }
+  if (!data.parts) {
+    return { ...data, parts: [{ id: nanoid(), type: 'text', content: '' }] };
+  }
+  return data;
+};
+
+const getFileIcon = (fileName?: string) => {
+    if (!fileName) return <FileIcon className="w-8 h-8" />;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+        case 'mp3':
+        case 'wav': return <Music className="w-8 h-8 text-orange-500" />;
+        case 'mp4':
+        case 'mov': return <Film className="w-8 h-8 text-purple-500" />;
+        case 'pdf':
+        case 'docx':
+        case 'txt': return <FileText className="w-8 h-8 text-blue-500" />;
+        case 'csv':
+        case 'xlsx': return <FileSpreadsheet className="w-8 h-8 text-green-500" />;
+        case 'json': return <FileJson className="w-8 h-8 text-yellow-500" />;
+        default: return <FileQuestion className="w-8 h-8 text-muted-foreground" />;
+    }
 };
 
 export type QuickReply = { id: string; label: string };
@@ -54,7 +83,6 @@ export type BaseNodeData = {
   color?: string;
   type?: string;
   content?: string;
-  media?: { type: 'image' | 'video' | 'document' | 'audio'; url: string; name?: string };
   parts?: ContentPart[];
   branches?: { id: string; label: string; conditions: any[] }[];
   groups?: { type: 'and' | 'or'; conditions: { variable: string; operator: string; value: string }[] }[];
@@ -62,56 +90,22 @@ export type BaseNodeData = {
   list?: ListData;
   onOpenProperties?: (node: ReactFlowNode) => void;
   onNodeDoubleClick?: (node: ReactFlowNode, options?: { partId?: string; type?: string }) => void;
-  onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
+  onOpenAttachmentModal?: (nodeId: string, partId: string, type: MediaPart['type']) => void;
 };
 
-const MEDIA_TYPES: ContentPart['type'][] = ['image', 'video', 'audio', 'document'];
-
-const isMediaPart = (
-  part: ContentPart
-): part is ContentPart & { type: 'image' | 'video' | 'audio' | 'document'; url?: string; name?: string } => {
-  return MEDIA_TYPES.includes(part.type);
-};
-
-const migrateData = (data: BaseNodeData): BaseNodeData => {
-  if (typeof data.content === 'string' && !data.parts) {
-    return { ...data, parts: [{ id: nanoid(), type: 'text', content: data.content }] };
-  }
-  if (!data.parts) {
-    return { ...data, parts: [{ id: nanoid(), type: 'text', content: '' }] };
-  }
-  return data;
-};
-
-const getFileIcon = (fileName?: string) => {
-  if (!fileName) return <FileIcon className="w-8 h-8 text-muted-foreground" />;
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'pdf': return <FileText className="w-8 h-8 text-red-500" />;
-    case 'docx': return <FileText className="w-8 h-8 text-blue-500" />;
-    case 'mp3':
-    case 'wav': return <Music className="w-8 h-8 text-orange-500" />;
-    case 'mp4':
-    case 'mov': return <Film className="w-8 h-8 text-purple-500" />;
-    case 'txt': return <FileText className="w-8 h-8 text-gray-500" />;
-    case 'csv':
-    case 'xlsx': return <FileSpreadsheet className="w-8 h-8 text-green-500" />;
-    case 'json': return <FileJson className="w-8 h-8 text-yellow-500" />;
-    default: return <FileQuestion className="w-8 h-8 text-muted-foreground" />;
-  }
-};
 
 export default function BaseNode({ id, data, selected }: { id: string; data: BaseNodeData; selected: boolean }) {
   const { deleteNode, duplicateNode, setStartNode, startNodeId, updateNodeData, nodes } = useFlowStore();
-  const { getNode, getViewport, project } = useReactFlow();
+  const { getNode } = useReactFlow();
   const [isEditing, setIsEditing] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-
+  const isOpeningModal = useRef(false);
+  
   const migratedData = useMemo(() => migrateData(data), [data]);
   const parts = migratedData.parts || [];
   const textPart = useMemo(() => parts.find(p => p.type === 'text') as ContentPart & { type: 'text' } || { id: nanoid(), type: 'text', content: '' }, [parts]);
-  const mediaParts = useMemo(() => parts.filter(p => MEDIA_TYPES.includes(p.type) && p.type !== 'image'), [parts]);
+  const mediaParts = useMemo(() => parts.filter(isMediaPart), [parts]);
+
 
   const customStyle = {
     '--node-color': data.color || 'hsl(var(--primary))',
@@ -143,15 +137,23 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     }
     data.onNodeDoubleClick?.(thisNode as ReactFlowNode, { partId, type });
   };
+  
+  const handleClick = () => {
+    if(isMessageNode) setIsEditing(true);
+  }
 
   useClickAway(nodeRef, (event) => {
+    const target = event.target as HTMLElement;
+    
+    // Do not close if clicking on a modal, popper, or the delete button itself
+    if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]') || target.closest(`.${styles.deletePartButton}`) || isOpeningModal.current) {
+        return;
+    }
     if (isMessageNode && isEditing) {
-      const target = event.target as HTMLElement | null;
-      if (modalRef.current && target && !modalRef.current.contains(target)) {
-        setIsEditing(false);
-      }
+      setIsEditing(false);
     }
   });
+
 
   const updateButtonLabel = (buttonId: string, newLabel: string) => {
     const newReplies = (data.quickReplies || []).map((qr) => (qr.id === buttonId ? { ...qr, label: newLabel } : qr));
@@ -164,60 +166,76 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     updateNodeData(id, { parts: newParts });
   };
 
-  const handleDeletePart = (partId: string) => {
-    const newParts = parts.filter(p => p.id !== partId);
-    updateNodeData(id, { parts: newParts });
-  };
+  const handleDeletePart = useCallback((partIdToDelete: string) => {
+      const newParts = parts.filter(p => p.id !== partIdToDelete);
+      updateNodeData(id, { parts: newParts });
+  }, [id, parts, updateNodeData]);
 
-  const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
-    if (!media || type === 'image') return; // Images are handled by RichTextEditor
-    const newPart: ContentPart = { id: media.id, type, url: media.url, name: media.name };
-    updateNodeData(id, { parts: [...parts, newPart] });
+  const handleAddMedia = (type: MediaPart['type']) => {
+    isOpeningModal.current = true;
+    data.onOpenAttachmentModal?.(id, nanoid(), type);
+    setTimeout(() => { isOpeningModal.current = false; }, 100);
   };
 
   const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
     if (isMediaPart({ id: partId, type } as ContentPart)) {
-      data.onOpenAttachmentModal?.(id, partId, type as 'image' | 'video' | 'audio' | 'document');
+      isOpeningModal.current = true;
+      data.onOpenAttachmentModal?.(id, partId, type as MediaPart['type']);
+      setTimeout(() => { isOpeningModal.current = false; }, 100);
     }
   };
 
-  const messageBody = (
-    <div className={styles.messageNodeBody} onClick={() => !isEditing && setIsEditing(true)}>
-      {isEditing ? (
-        <RichTextEditor
-          value={textPart.content}
-          onChange={handleContentChange}
-          variables={['name', 'email', 'order_id']}
-          onAddMedia={handleAddMedia}
-          modalRef={modalRef}
-        />
-      ) : (
-        <>
-          <div
-            className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full p-3 min-h-[60px] cursor-text"
-            dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
-          />
-          {mediaParts.length > 0 && (
-            <div className={styles.mediaGrid} style={{ padding: '0 12px 12px' }}>
-              {mediaParts.map(part => (
-                <div
-                  key={part.id}
-                  className={styles.mediaGridItem}
-                  onClick={(e) => { e.stopPropagation(); handleOpenAttachment(part.id, part.type); }}
-                  title={isMediaPart(part) ? `Edit ${part.name || part.type}` : `Edit ${part.type}`}
-                >
-                  {part.type === 'video' && <Video className="w-8 h-8" />}
-                  {part.type === 'audio' && <AudioLines className="w-8 h-8" />}
-                  {part.type === 'document' && getFileIcon(isMediaPart(part) ? part.name : undefined)}
-                  <button onClick={(e) => { e.stopPropagation(); handleDeletePart(part.id); }} className={styles.deletePartButton}>
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
+  const AttachmentList = ({ isEditor = false }: { isEditor?: boolean }) => (
+    <div className={cn(styles.attachmentList, isEditor && styles.attachmentListEditor, !isEditor && mediaParts.length > 0 && styles.attachmentListCollapsed)}>
+      {mediaParts.map(part => (
+        <div key={part.id} className={styles.attachmentItem} onClick={(e) => { e.stopPropagation(); if (!isEditor) handleOpenAttachment(part.id, part.type)}}>
+          {part.type === 'image' && part.url ? (
+            <Image src={part.url} alt={part.name || 'Attachment'} width={64} height={64} className={styles.attachmentThumbnail} />
+          ) : (
+            <div className={styles.attachmentIconWrapper}>{getFileIcon(part.name)}</div>
           )}
-        </>
-      )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeletePart(part.id);
+            }}
+            className={styles.deletePartButton}
+            aria-label={`Remove attachment`}
+          >
+            <XCircle size={18} />
+          </button>
+           <span className="sr-only">{part.name || 'Attachment'}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const messageBody = (
+    <div className={styles.messageNodeBody} onClick={handleClick}>
+       {isEditing ? (
+         <>
+           <RichTextEditor
+             value={textPart.content}
+             onChange={handleContentChange}
+             variables={['name', 'email', 'order_id']}
+             onAddMedia={handleAddMedia}
+             attachments={mediaParts}
+             onDeleteAttachment={handleDeletePart}
+           />
+         </>
+       ) : (
+         <div className="relative p-3 space-y-2">
+           <div
+             className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full"
+             dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
+           />
+            {mediaParts.length > 0 && !isEditing && (
+              <div className={styles.attachmentContainerCollapsed}>
+                <AttachmentList />
+              </div>
+            )}
+         </div>
+       )}
     </div>
   );
 

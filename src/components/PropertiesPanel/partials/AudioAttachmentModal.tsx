@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,17 +11,15 @@ import { nanoid } from 'nanoid';
 import { MediaPart } from '@/types/MediaPart';
 
 type AudioAttachmentModalProps = {
-  modalRef: React.MutableRefObject<HTMLDivElement | null>;
   isOpen: boolean;
   onClose: () => void;
   onSave: (media: MediaPart | MediaPart[]) => void;
-  onDelete?: () => void; // Made optional to align with ImageAttachmentModal
+  onDelete?: () => void;
   media?: MediaPart;
-  type: 'image' | 'video' | 'audio' | 'document'; // Added type prop
+  type: 'image' | 'video' | 'audio' | 'document';
 };
 
 export default function AudioAttachmentModal({
-  modalRef,
   isOpen,
   onClose,
   onSave,
@@ -44,8 +43,8 @@ export default function AudioAttachmentModal({
   }, [media, isOpen, type]);
 
   const handleSave = () => {
-    if (!url) return;
-    onSave({ id: nanoid(), type, url });
+    if (!url || isError) return;
+    onSave({ id: media?.id || nanoid(), type, url, name: url.substring(url.lastIndexOf('/')+1) });
     onClose();
   };
 
@@ -55,34 +54,39 @@ export default function AudioAttachmentModal({
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrl(e.target.value);
-    if (isError) {
-      setIsError(false);
-    }
+    setIsError(false);
   };
-
+  
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    const mediaArray: MediaPart[] = Array.from(files).map(file => ({
-      id: nanoid(),
-      type,
-      url: URL.createObjectURL(file),
-      name: file.name,
-    }));
-    onSave(mediaArray);
-    onClose();
+    const mediaArray: MediaPart[] = [];
+    for (const file of files) {
+        mediaArray.push({
+            id: nanoid(),
+            type: type,
+            url: URL.createObjectURL(file),
+            name: file.name,
+        });
+    }
+
+    if(mediaArray.length > 0) {
+        onSave(mediaArray);
+        onClose();
+    }
   };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent ref={modalRef}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Attach Audio</DialogTitle>
-          <DialogDescription>Add an audio file to your message. Provide a URL or upload a file. You can select multiple files.</DialogDescription>
+          <DialogDescription>Add audio from a URL or upload from your device.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="flex items-center justify-center h-48 bg-muted rounded-md overflow-hidden p-4">
+          <div className="flex items-center justify-center h-28 bg-muted rounded-md overflow-hidden p-4">
             {url && !isError ? 
               <audio 
                 key={url}
@@ -92,15 +96,22 @@ export default function AudioAttachmentModal({
                 onError={() => setIsError(true)}
               /> :
               isError ?
-                <FileX className="w-16 h-16 text-destructive" /> :
-                <Music className="w-16 h-16 text-muted-foreground" />
+                <FileX className="w-12 h-12 text-destructive" /> :
+                <Music className="w-12 h-12 text-muted-foreground" />
             }
           </div>
           <div className="grid gap-2">
             <Label htmlFor="audio-url">Audio URL</Label>
             <Input id="audio-url" value={url} onChange={handleUrlChange} placeholder="https://example.com/audio.mp3" />
           </div>
-          <div className="text-center text-sm text-muted-foreground">or</div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">OR</span>
+            </div>
+          </div>
           <input
             type="file"
             ref={fileInputRef}
@@ -113,7 +124,7 @@ export default function AudioAttachmentModal({
         </div>
         <DialogFooter className="justify-between">
           <div>
-            {media && onDelete && <Button variant="destructive" onClick={onDelete}>Delete Attachment</Button>}
+            {media && onDelete && <Button variant="destructive" onClick={onDelete}>Delete</Button>}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>

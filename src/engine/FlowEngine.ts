@@ -1,10 +1,17 @@
+
 import { EventBus } from './EventBus';
 import { RealClock, MockClock, IClock } from './clock';
 import { evalExpression, parseDelay, renderTemplate } from './evaluator';
 import { compile, Compiled, RTNode } from './FlowCompiler';
-import type { EngineEventMap, EngineOptions, FlowState, Channel, EngineStatus } from './types';
+import type { EngineEventMap, EngineOptions, FlowState, Channel, EngineStatus, Attachment } from './types';
 import { sendTestRequest } from '@/api/mockServer';
 import { useFlowStore } from '@/store/flow';
+import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
+import { MediaPart } from '@/types/MediaPart';
+
+const isMediaPart = (part: ContentPart): part is ({ id: string } & MediaPart) => {
+    return ['image', 'video', 'audio', 'document'].includes(part.type as string);
+};
 
 export class FlowEngine {
   private bus = new EventBus<EngineEventMap>();
@@ -43,7 +50,6 @@ export class FlowEngine {
     if (!this.compiled) throw new Error('FlowEngine: setFlow() first');
     this.reset();
     
-    // Explicitly check the zustand store for the designated start node ID.
     const startNodeIdFromStore = useFlowStore.getState().startNodeId;
 
     const start = startNodeIdFromStore || this.compiled.starts[0];
@@ -80,7 +86,6 @@ export class FlowEngine {
       
       let nextNodeId: string | null = null;
       if (kind === 'buttons' || kind === 'list') {
-          // Find the edge corresponding to the button/item label that was clicked.
           const outs = this.compiled?.next.get(nodeId) || [];
           const sourceNode = this.compiled?.nodes.get(nodeId);
           const replies = sourceNode?.data?.quickReplies || sourceNode?.data?.list?.sections?.flatMap((s:any) => s.items) || [];
@@ -98,7 +103,6 @@ export class FlowEngine {
       if (nextNodeId) { 
         this.queue.push(nextNodeId);
       } else {
-        // Handle default case if no matching button edge is found
         const defaultEdge = (this.compiled?.next.get(nodeId) || []).find(e => !e.branch);
         if (defaultEdge) this.queue.push(defaultEdge.to);
       }
@@ -154,12 +158,21 @@ export class FlowEngine {
 
   private execute(n: RTNode): 'sync' | 'async' | 'wait' {
     const data = n.data || {};
-    this.bus.emit('trace', { ts: Date.now(), type: 'enterNode', nodeId: n.id, nodeLabel: data.label,result: 'entering node' });
+    this.bus.emit('trace', { ts: Date.now(), type: 'enterNode', nodeId: n.id, nodeLabel: data.label });
 
     switch (n.kind) {
       case 'message': {
-        const text = renderTemplate(data.content || data.label || '', this.vars);
-        this.emitBot(text, data.quickReplies);
+        const parts: ContentPart[] = data.parts || (data.content ? [{type: 'text', content: data.content, id: 'text-part'}] : []);
+        const textPart = parts.find(p => p.type === 'text');
+        const text = renderTemplate(textPart?.content || data.label || '', this.vars);
+        const attachments: Attachment[] = parts.filter(isMediaPart).map(p => ({
+            id: p.id,
+            type: p.type,
+            name: p.name || 'file',
+            url: p.url,
+        }));
+
+        this.emitBot(text, data.quickReplies, attachments);
         this.trace(n.id, `message("${trunc(text)}")`);
         const nx = this.next(n.id);
         if (nx) this.queue.push(nx);
@@ -243,12 +256,13 @@ export class FlowEngine {
     return { url, method, headers, body };
   }
 
-  private emitBot(text: string, buttons?: { id: string; label: string }[]) {
+  private emitBot(text: string, buttons?: { id: string; label: string }[], attachments?: Attachment[]) {
     this.bus.emit('botMessage', {
       id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
       text,
       channel: this.opts.channel as Channel,
-      actions: { buttons }
+      actions: { buttons },
+      attachments
     });
   }
 

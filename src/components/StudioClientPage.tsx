@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Node } from 'reactflow';
 import { ReactFlowProvider, useReactFlow } from 'reactflow';
 import { nanoid } from 'nanoid';
@@ -63,8 +64,6 @@ function StudioPageContent() {
 
   const engine = useMemo(() => new FlowEngine({ channel: meta.channels[0], clock: 'real' }), [meta.channels]);
   const { project } = useReactFlow();
-
-  const modalRef = useRef<HTMLDivElement | null>(null);
 
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
 
@@ -298,7 +297,6 @@ function StudioPageContent() {
         />
       )}
 
-      {/* Modals for node functions */}
       {modalState?.type === 'question' && modalState.nodeId && (
         <QuestionModal isOpen={true} onClose={() => setModalState(null)} nodeId={modalState.nodeId} />
       )}
@@ -313,7 +311,6 @@ function StudioPageContent() {
       )}
       {modalState?.type === 'image' && modalState.nodeId && modalState.partId && (
         <ImageAttachmentModal
-          modalRef={modalRef}
           isOpen={true}
           onClose={() => setModalState(null)}
           onSave={onSaveMedia}
@@ -324,7 +321,6 @@ function StudioPageContent() {
       )}
       {modalState?.type === 'video' && modalState.nodeId && modalState.partId && (
         <VideoAttachmentModal
-          modalRef={modalRef}
           isOpen={true}
           onClose={() => setModalState(null)}
           onSave={onSaveMedia}
@@ -335,7 +331,6 @@ function StudioPageContent() {
       )}
       {modalState?.type === 'audio' && modalState.nodeId && modalState.partId && (
         <AudioAttachmentModal
-          modalRef={modalRef}
           isOpen={true}
           onClose={() => setModalState(null)}
           onSave={onSaveMedia}
@@ -346,7 +341,6 @@ function StudioPageContent() {
       )}
       {modalState?.type === 'document' && modalState.nodeId && modalState.partId && (
         <DocumentAttachmentModal
-          modalRef={modalRef}
           isOpen={true}
           onClose={() => setModalState(null)}
           onSave={onSaveMedia}

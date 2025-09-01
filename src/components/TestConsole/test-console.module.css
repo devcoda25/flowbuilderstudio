@@ -1,3 +1,5 @@
+
+
 .root {
   position: fixed;
   top: 56px; 
@@ -86,6 +88,9 @@
   word-break: break-word;
   line-height: 1.4;
   font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .user { align-self: flex-end; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-bottom-right-radius: 4px; }
 .bot { align-self: flex-start; background: hsl(var(--muted)); color: hsl(var(--foreground)); border-bottom-left-radius: 4px; }
@@ -93,7 +98,7 @@
 .bubbleText { white-space: pre-wrap; word-break: break-word; }
 
 .actionRow {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
 .qrBtn {
   height: 32px;
@@ -111,13 +116,39 @@
     border-color: hsl(var(--primary) / 0.2);
 }
 
-.attRow { margin-top: 8px; }
-.attChip {
-  display: inline-block;
-  padding: 4px 12px; border-radius: 999px; font-size: 13px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+.attRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
 }
+.attChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  width: fit-content;
+  max-width: 200px;
+}
+
+.attImage {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.attIconWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
 
 .inputRow { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px; border-top: 1px solid hsl(var(--border)); }
 

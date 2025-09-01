@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -25,8 +26,6 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignJustify,
-  Image as ImageIcon,
   Pilcrow,
   Heading1,
   Heading2,
@@ -39,6 +38,8 @@ import {
   Video,
   AudioLines,
   FileText,
+  Image as ImageIcon,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -51,20 +52,30 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
-import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
-import VideoAttachmentModal from '@/components/PropertiesPanel/partials/VideoAttachmentModal';
-import AudioAttachmentModal from '@/components/PropertiesPanel/partials/AudioAttachmentModal';
-import DocumentAttachmentModal from '@/components/PropertiesPanel/partials/DocumentAttachmentModal';
-import { nanoid } from 'nanoid';
-import { MediaPart } from '@/types/MediaPart'; // Import shared MediaPart type
+import type { MediaPart } from '@/types/MediaPart';
+import ImageComponent from 'next/image';
+import styles from '@/components/CanvasWithLayoutWorker/canvas-layout.module.css';
 
 type RichTextEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   variables?: string[];
-  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
-  modalRef: React.MutableRefObject<HTMLDivElement | null>;
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
+  attachments?: MediaPart[];
+  onDeleteAttachment?: (id: string) => void;
+};
+
+const getFileIcon = (fileName?: string) => {
+    if (!fileName) return <FileText className="w-8 h-8" />;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+        case 'mp3':
+        case 'wav': return <AudioLines className="w-8 h-8 text-orange-500" />;
+        case 'mp4':
+        case 'mov': return <Video className="w-8 h-8 text-purple-500" />;
+        default: return <FileText className="w-8 h-8 text-blue-500" />;
+    }
 };
 
 const Toolbar = ({
@@ -74,7 +85,7 @@ const Toolbar = ({
 }: {
   editor: Editor | null;
   variables?: string[];
-  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => void;
+  onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
 }) => {
   if (!editor) {
     return null;
@@ -96,9 +107,7 @@ const Toolbar = ({
   };
 
   const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
-    if (onAddMedia) {
-      onAddMedia(type);
-    }
+    onAddMedia?.(type);
   };
 
   return (
@@ -399,7 +408,7 @@ const Toolbar = ({
           <Separator orientation="vertical" className="h-6 mx-1" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Add Media">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Attach File">
                 <Paperclip className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -432,7 +441,7 @@ const Toolbar = ({
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, attachments, onDeleteAttachment }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({}),
@@ -447,7 +456,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         autolink: true,
       }),
       Image.configure({
-        inline: true,
+        inline: false, 
         allowBase64: true,
       }).extend({
         addAttributes() {
@@ -460,7 +469,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
                 if (!attributes.style) {
                   return {};
                 }
-                return { style: attributes.style };
+                return { style: `max-width: 100%; height: auto; ${attributes.style}` };
               },
             },
           };
@@ -501,99 +510,69 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         class:
           'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]',
       },
+      // This is the crucial part to prevent Tiptap from interfering with our React component's events
+      handleDOMEvents: {
+        mousedown: (view, event) => {
+          const target = event.target as HTMLElement;
+          // If the click is on a delete button, let React handle it and stop Tiptap
+          if (target.closest(`.${styles.deletePartButton}`)) {
+            return true; // Stop Tiptap's event handling
+          }
+          return false; // Let Tiptap handle the event
+        },
+      },
+      // Tell Tiptap to not re-render our React attachment components
+      ignoreMutation: (mutation) => {
+        if (mutation.type === 'attributes' && (mutation.target as HTMLElement).hasAttribute('data-attachment-list-editor')) {
+          return true;
+        }
+        return false;
+      }
     },
     immediatelyRender: false,
   });
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'image' | 'video' | 'audio' | 'document' | null>(null);
-
-  const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
-    setModalType(type);
-    setModalOpen(true);
-    if (onAddMedia) {
-      onAddMedia(type);
-    }
-  };
-
-  const handleModalClose = () => {
-    setModalOpen(false);
-    setModalType(null);
-  };
-
-  const handleModalSave = (media: MediaPart | MediaPart[]) => {
-    if (!editor) return;
-    const mediaArray = Array.isArray(media) ? media : [media];
-    mediaArray.forEach((mediaItem) => {
-      if (!mediaItem.url) return;
-      if (modalType === 'image') {
-        editor.chain().focus().setImage({ src: mediaItem.url }).run();
-        onChange(editor.getHTML());
-      } else if (modalType && onAddMedia) {
-        const mediaPart: MediaPart = {
-          id: nanoid(),
-          type: modalType,
-          url: mediaItem.url,
-          name: mediaItem.name,
-        };
-        onAddMedia(modalType, mediaPart);
-      }
-    });
-    handleModalClose();
-  };
-
   React.useEffect(() => {
     if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-      editor.commands.setContent(value);
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
   return (
-    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background">
+    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background" contentEditable={false}>
       <Toolbar
         editor={editor}
         variables={variables}
-        onAddMedia={handleMediaSelect}
+        onAddMedia={onAddMedia}
       />
       <div className="flex-grow overflow-y-auto">
         <EditorContent editor={editor} placeholder={placeholder} />
+        
+        {attachments && attachments.length > 0 && (
+            <div className={cn(styles.attachmentList, styles.attachmentListEditor)} data-attachment-list-editor>
+                {attachments.map(part => (
+                    <div key={part.id} className={styles.attachmentItem}>
+                        {part.type === 'image' && part.url ? (
+                            <ImageComponent src={part.url} alt={part.name || 'Attachment'} width={64} height={64} className={styles.attachmentThumbnail} />
+                        ) : (
+                            <div className={styles.attachmentIconWrapper}>{getFileIcon(part.name)}</div>
+                        )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteAttachment?.(part.id);
+                            }}
+                            className={styles.deletePartButton}
+                            aria-label={`Remove attachment`}
+                        >
+                            <XCircle size={18} />
+                        </button>
+                        <span className="sr-only">{part.name || 'Attachment'}</span>
+                    </div>
+                ))}
+            </div>
+        )}
       </div>
-      {modalOpen && modalType === 'image' && (
-        <ImageAttachmentModal
-          modalRef={modalRef}
-          isOpen={modalOpen}
-          onClose={handleModalClose}
-          onSave={handleModalSave}
-          type={modalType}
-        />
-      )}
-      {modalOpen && modalType === 'video' && (
-        <VideoAttachmentModal
-          modalRef={modalRef}
-          isOpen={modalOpen}
-          onClose={handleModalClose}
-          onSave={handleModalSave}
-          type={modalType}
-        />
-      )}
-      {modalOpen && modalType === 'audio' && (
-        <AudioAttachmentModal
-          modalRef={modalRef}
-          isOpen={modalOpen}
-          onClose={handleModalClose}
-          onSave={handleModalSave}
-          type={modalType}
-        />
-      )}
-      {modalOpen && modalType === 'document' && (
-        <DocumentAttachmentModal
-          modalRef={modalRef}
-          isOpen={modalOpen}
-          onClose={handleModalClose}
-          onSave={handleModalSave}
-          type={modalType}
-        />
-      )}
     </div>
   );
 }

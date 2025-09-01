@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -67,21 +69,29 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
     name: 'quickReplies',
   });
 
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-
   const handleAddMedia = (type: 'image' | 'video' | 'audio' | 'document', media?: MediaPart) => {
     if (!media) return; // Modal opened, but no media saved yet
     const currentParts = getValues('parts') || [];
     setValue('parts', [...currentParts, { id: nanoid(), type, url: media.url, name: media.name }]);
   };
 
+  const handleDeleteAttachment = (id: string) => {
+    const currentParts = getValues('parts') || [];
+    setValue('parts', currentParts.filter((part) => part.id !== id));
+  };
+
   React.useEffect(() => {
     if (isOpen && node) {
       reset({
-        content: 'Ask a question here',
-        quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-        parts: [],
-        ...node.data,
+        content: node.data?.content || 'Ask a question here',
+        quickReplies: node.data?.quickReplies?.length
+          ? node.data.quickReplies
+          : [{ id: nanoid(), label: 'Answer 1' }],
+        parts: node.data?.parts || [],
+        headerText: node.data?.headerText || '',
+        footerText: node.data?.footerText || '',
+        variableName: node.data?.variableName || '',
+        mediaHeader: node.data?.mediaHeader || false,
       });
     }
   }, [node, isOpen, reset]);
@@ -95,7 +105,7 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl" ref={modalRef}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Configure Buttons</DialogTitle>
         </DialogHeader>
@@ -132,8 +142,9 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
                         onChange={field.onChange}
                         placeholder="Ask a question..."
                         variables={['name', 'email', 'order_id']}
-                        modalRef={modalRef}
                         onAddMedia={handleAddMedia}
+                        attachments={getValues('parts') as MediaPart[]}
+                        onDeleteAttachment={handleDeleteAttachment}
                       />
                     )}
                   />

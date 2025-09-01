@@ -1,4 +1,5 @@
 
+
 .root { 
   position: relative; 
   height: 100%; 
@@ -227,16 +228,16 @@
 
 .mediaGrid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 8px;
-    max-width: 200px;
-    margin: 12px auto;
+    padding: 12px;
+    border-top: 1px solid hsl(var(--border));
 }
 
 .mediaGridItem {
     position: relative;
     aspect-ratio: 1 / 1;
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--muted));
     border-radius: 6px;
     overflow: hidden;
     display: grid;
@@ -266,26 +267,30 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
   border-radius: 999px;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   cursor: pointer;
-  z-index: 10;
+  transition: all 0.2s;
   opacity: 0;
-  transition: opacity 0.2s;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.mediaGridItem:hover .deletePartButton {
+
+.attachmentItem:hover .deletePartButton {
   opacity: 1;
 }
 
 .deletePartButton:hover {
-  background: hsl(var(--destructive) / 0.1);
-  color: hsl(var(--destructive));
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+  border-color: hsl(var(--destructive) / 0.3);
+  transform: scale(1.1);
 }
 
 .addPartButtons {
@@ -446,4 +451,26 @@
     box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 4px hsl(var(--destructive));
 }
 
-    
+/* Attachment styles */
+.attachmentList {
+  @apply flex flex-wrap gap-2 p-1;
+}
+
+.attachmentListEditor {
+  @apply bg-muted/50 rounded-b-md;
+}
+
+.attachmentItem {
+  @apply relative inline-flex items-center justify-center rounded-lg border border-border shadow-sm cursor-pointer transition-all hover:border-primary hover:shadow-md;
+  width: 80px; /* 64px thumb + 16px padding */
+  height: 80px;
+}
+
+.attachmentThumbnail {
+  @apply w-16 h-16 object-cover rounded-md flex-shrink-0 bg-muted;
+}
+
+.attachmentIconWrapper {
+    @apply w-16 h-16 flex-shrink-0 grid place-items-center bg-muted rounded-md;
+}
+

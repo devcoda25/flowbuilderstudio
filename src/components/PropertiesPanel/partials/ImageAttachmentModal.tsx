@@ -1,96 +1,123 @@
+
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ImageIcon, FileX } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import { MediaPart } from '@/types/MediaPart'; // Import shared MediaPart type
+import { MediaPart } from '@/types/MediaPart';
 
 type ImageAttachmentModalProps = {
-  modalRef: React.MutableRefObject<HTMLDivElement | null>;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (media: MediaPart | MediaPart[]) => void; // Updated to allow arrays
+  onSave: (media: MediaPart | MediaPart[]) => void;
   onDelete?: () => void;
   media?: MediaPart;
-  type?: 'image' | 'video' | 'audio' | 'document';
+  type: 'image' | 'video' | 'audio' | 'document';
 };
 
-export default function ImageAttachmentModal({ modalRef, isOpen, onClose, onSave, onDelete, media, type }: ImageAttachmentModalProps) {
-  const [file, setFile] = useState<File | null>(null);
+export default function ImageAttachmentModal({ isOpen, onClose, onSave, onDelete, media, type }: ImageAttachmentModalProps) {
+  const [url, setUrl] = useState('');
+  const [isError, setIsError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setFile(event.target.files[0]); // Store first file for preview
+  useEffect(() => {
+    if (isOpen) {
+      if (media && media.type === type) {
+        setUrl(media.url || '');
+      } else {
+        setUrl('');
+      }
+      setIsError(false);
     }
-  };
-
+  }, [media, isOpen, type]);
+  
   const handleSave = () => {
-    if (fileInputRef.current?.files) {
-      const files = Array.from(fileInputRef.current.files);
-      const mediaArray: MediaPart[] = files.map(file => ({
-        id: nanoid(),
-        url: URL.createObjectURL(file),
-        name: file.name,
-        type: type || 'image',
-      }));
-      onSave(mediaArray);
-      onClose();
-    }
+    if (!url || isError) return;
+    onSave({ id: media?.id || nanoid(), type, url, name: url.substring(url.lastIndexOf('/')+1) });
+    onClose();
+  };
+  
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
-  const dialogTitle = type ? `${type.charAt(0).toUpperCase() + type.slice(1)}` : 'Media';
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrl(e.target.value);
+    setIsError(false);
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const mediaArray: MediaPart[] = [];
+    for (const file of files) {
+        mediaArray.push({
+            id: nanoid(),
+            type: type,
+            url: URL.createObjectURL(file),
+            name: file.name,
+        });
+    }
+
+    if(mediaArray.length > 0) {
+        onSave(mediaArray);
+        onClose();
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent ref={modalRef} className="sm:max-w-[425px]">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload {dialogTitle}</DialogTitle>
+          <DialogTitle>Attach Image</DialogTitle>
+          <DialogDescription>Add an image from a URL or upload from your device.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept={
-              type === 'image' ? 'image/*' :
-              type === 'video' ? 'video/*' :
-              type === 'audio' ? 'audio/*' :
-              '*/*'
-            }
-            onChange={handleFileChange}
-            multiple // Added to support multiple files
-          />
-          {(file || media) && (
-            <div>
-              <p>Selected file: {file?.name || media?.name}</p>
-              {type === 'image' && (file || media) && (
-                <img
-                  src={file ? URL.createObjectURL(file) : media?.url}
-                  alt="Preview"
-                  className="max-w-full h-auto max-h-48"
-                />
-              )}
+            <div className="flex items-center justify-center h-40 bg-muted rounded-md overflow-hidden">
+                {url && !isError ? (
+                  <img src={url} alt="Preview" className="max-w-full h-auto max-h-40 object-contain" onError={() => setIsError(true)} />
+                ) : isError ? (
+                  <FileX className="w-16 h-16 text-destructive" />
+                ) : (
+                  <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                )}
             </div>
-          )}
+            <div className="grid gap-2">
+                <Label htmlFor="image-url">Image URL</Label>
+                <Input id="image-url" value={url} onChange={handleUrlChange} placeholder="https://example.com/image.png" />
+            </div>
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">OR</span>
+                </div>
+            </div>
+             <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
+              multiple
+            />
+            <Button variant="outline" type="button" onClick={handleUploadClick}>Upload from device</Button>
         </div>
-        <div className="flex justify-between">
-          <div>
-            {onDelete && media && (
-              <Button variant="destructive" onClick={onDelete}>
-                Delete
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!file}>
-              Save
-            </Button>
-          </div>
-        </div>
+        <DialogFooter className="justify-between">
+            <div>
+              {media && onDelete && <Button variant="destructive" onClick={onDelete}>Delete</Button>}
+            </div>
+            <div className="flex gap-2">
+                <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSave} disabled={!url || isError}>Save</Button>
+            </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
