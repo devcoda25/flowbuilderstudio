@@ -507,6 +507,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class:
@@ -537,12 +538,6 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
       },
     },
   });
-
-  React.useEffect(() => {
-    if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
-      editor.commands.setContent(value, false);
-    }
-  }, [value, editor]);
 
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background" contentEditable={false}>
