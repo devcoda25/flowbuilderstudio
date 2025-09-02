@@ -83,7 +83,7 @@ export default function CanvasWithLayoutWorker({
 }: CanvasWithLayoutWorkerProps) {
   const rfRef = useRef<import('reactflow').ReactFlowInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { project } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const { awareness } = usePresence();
   const { addNode } = useFlowStore();
   
@@ -99,7 +99,7 @@ export default function CanvasWithLayoutWorker({
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const reactFlowBounds = rfRef.current?.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const reactFlowBounds = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       if (!reactFlowBounds) return;
 
       const data = event.dataTransfer.getData('application/x-flow-node');
@@ -131,7 +131,7 @@ export default function CanvasWithLayoutWorker({
 
       addNode(newNode);
     },
-    [project, addNode, onOpenProperties]
+    [screenToFlowPosition, addNode, onOpenProperties]
   );
 
   const onSelectionChange = useCallback(
@@ -161,18 +161,17 @@ export default function CanvasWithLayoutWorker({
   const handleConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
     const targetIsPane = (event.target as HTMLElement).classList.contains('react-flow__pane');
 
-    if (targetIsPane && connectingNodeId) {
+    if (targetIsPane && connectingNodeId && rfRef.current) {
         const { nodeId, handleId } = connectingNodeId;
         if (!nodeId || !canvasRef.current) return;
 
-        const { top, left } = canvasRef.current.getBoundingClientRect();
         const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
         const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
         
         setTimeout(() => {
           setNodeSelector({
-              x: clientX - left,
-              y: clientY - top,
+              x: clientX,
+              y: clientY,
               sourceNode: nodeId,
               sourceHandle: handleId
           });
@@ -180,7 +179,7 @@ export default function CanvasWithLayoutWorker({
     }
     setConnectingNodeId(null);
     onConnectEnd(event);
-  }, [project, connectingNodeId, onConnectEnd]);
+  }, [connectingNodeId, onConnectEnd]);
 
   const handlePaneClick = useCallback(() => {
     setNodeSelector(null);
@@ -189,7 +188,7 @@ export default function CanvasWithLayoutWorker({
   const handleSelectNode = (item: PaletteItemPayload) => {
     if (!nodeSelector) return;
     const { x: paneX, y: paneY, sourceNode, sourceHandle } = nodeSelector;
-    const { x, y } = project({ x: paneX, y: paneY });
+    const { x, y } = screenToFlowPosition({ x: paneX, y: paneY });
     
     const newNodeId = nanoid();
     const newNode: Node = {
@@ -262,7 +261,7 @@ export default function CanvasWithLayoutWorker({
         </ReactFlow>
         {nodeSelector && (
             <div
-                style={{ position: 'absolute', left: nodeSelector.x + 10, top: nodeSelector.y, zIndex: 1000 }}
+                style={{ position: 'fixed', left: nodeSelector.x + 10, top: nodeSelector.y, zIndex: 1000 }}
             >
                 <NodeSelector onSelect={handleSelectNode} onClose={() => setNodeSelector(null)} />
             </div>

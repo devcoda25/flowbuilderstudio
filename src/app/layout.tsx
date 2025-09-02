@@ -31,7 +31,7 @@ export default function RootLayout({
         <CredentialVaultProvider>
           <PresenceProvider>
             {children}
-            <SWUpdater />
+            {/* <SWUpdater /> */}
             <Toaster />
           </PresenceProvider>
         </CredentialVaultProvider>
