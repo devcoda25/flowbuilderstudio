@@ -32,13 +32,15 @@ import FlowsModal from '@/components/FlowsModal/FlowsModal';
 import ListModal from '@/components/PropertiesPanel/partials/ListModal';
 import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
 import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
+import ImageEditorModal from '@/components/PropertiesPanel/partials/ImageEditorModal';
+
 
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { MediaPart } from '@/types/MediaPart';
 import { useToast } from '@/hooks/use-toast';
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question';
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'imageEditor';
   nodeId?: string;
   data?: any;
   partId?: string;
@@ -117,6 +119,15 @@ function StudioPageContent() {
     const part = (node.data.parts || []).find((p: ContentPart) => p.id === partId);
     setModalState({ type, nodeId, partId, data: part });
   }, [nodes]);
+
+  const openImageEditorModal = (nodeId: string, partId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const part = (node.data.parts || []).find((p: ContentPart) => p.id === partId);
+    if (part && part.type === 'image') {
+        setModalState({ type: 'imageEditor', nodeId, partId, data: part });
+    }
+  };
 
   const openPropertiesForNode = useCallback((node: Node | null) => {
     setSelectedNodeId(node?.id || null);
@@ -283,6 +294,7 @@ function StudioPageContent() {
           onNodeDoubleClick={handleNodeDoubleClick}
           onOpenProperties={openPropertiesForNode}
           onOpenAttachmentModal={openAttachmentModal}
+          onOpenImageEditor={openImageEditorModal}
           viewportKey="flow-editor-viewport"
         />
       </main>
@@ -317,6 +329,14 @@ function StudioPageContent() {
           onDelete={onDeleteMedia}
           media={activePart}
           type={modalState.type}
+        />
+      )}
+      {modalState?.type === 'imageEditor' && modalState.nodeId && modalState.partId && (
+        <ImageEditorModal
+            isOpen={true}
+            onClose={() => setModalState(null)}
+            onSave={(data) => onSaveMedia(data)}
+            media={activePart as MediaPart}
         />
       )}
       {modalState?.type === 'video' && modalState.nodeId && modalState.partId && (

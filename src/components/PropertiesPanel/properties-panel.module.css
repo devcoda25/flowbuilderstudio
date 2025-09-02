@@ -7,6 +7,8 @@
 
 
 
+
+
 .root {
   position: fixed;
   top: 0; right: 0;
@@ -168,6 +170,130 @@
 .muted { color: hsl(var(--muted-foreground)); font-size: 12px; }
 .details { border: 1px dashed hsl(var(--border)); border-radius: 8px; padding: 8px; }
 .attachRow { padding-top: 4px; }
+
+
+/* New styles for Rich Text Editor and Attachments */
+.editorArea {
+    background-color: hsl(var(--background));
+    padding: 0;
+}
+
+.attachmentGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.attachmentCard {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background-color: hsl(var(--muted));
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border));
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease-in-out;
+}
+.attachmentCard:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+.attachmentCard:hover .attachmentCardHover {
+    opacity: 1;
+}
+
+.attachmentImage {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attachmentIcon {
+    flex-grow: 1;
+    display: grid;
+    place-items: center;
+    color: hsl(var(--muted-foreground));
+    padding: 1rem;
+}
+
+.attachmentLabel {
+    font-size: 12px;
+    padding: 6px 8px;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: hsla(var(--background), 0.8);
+    border-top: 1px solid hsl(var(--border));
+    backdrop-filter: blur(2px);
+}
+
+.attachmentOverlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: hsl(var(--primary-foreground));
+    background-color: hsla(var(--primary), 0.8);
+    backdrop-filter: blur(4px);
+}
+
+.attachmentDelete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: hsl(var(--card) / 0.8);
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    border-radius: 999px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+}
+.attachmentCard:hover .attachmentDelete {
+    opacity: 1;
+}
+.attachmentDelete:hover {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    transform: scale(1.1);
+}
+
+.attachmentCardHover {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.editorFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-top: 1px solid hsl(var(--border));
+}
+.footerActions {
+    display: flex;
+    gap: 8px;
+}
+
 
 /* Mobile: bottom sheet */
 @media (max-width: 768px) {

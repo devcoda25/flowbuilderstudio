@@ -15,6 +15,7 @@ import Image from '@tiptap/extension-image';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import CharacterCount from '@tiptap/extension-character-count';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -41,6 +42,7 @@ import {
   FileText,
   Image as ImageIcon,
   XCircle,
+  MoreVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -55,7 +57,7 @@ import {
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 import type { MediaPart } from '@/types/MediaPart';
 import ImageComponent from 'next/image';
-import styles from '../properties-panel.module.css';
+import panelStyles from '../properties-panel.module.css';
 
 export type RichTextEditorProps = {
   value: string;
@@ -64,18 +66,25 @@ export type RichTextEditorProps = {
   variables?: string[];
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
   modalRef?: React.RefObject<HTMLDivElement | null>;
+  attachments?: MediaPart[];
+  onDeleteAttachment?: (event: React.MouseEvent, id: string) => void;
+  onEditAttachment?: (id: string) => void;
 };
 
 
 const getFileIcon = (fileName?: string) => {
-    if (!fileName) return <FileText className="w-8 h-8" />;
+    if (!fileName) return <FileText className="w-full h-full p-4 text-muted-foreground" />;
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
         case 'mp3':
-        case 'wav': return <AudioLines className="w-8 h-8 text-orange-500" />;
+        case 'wav': return <AudioLines className="w-full h-full p-4 text-orange-500" />;
         case 'mp4':
-        case 'mov': return <Video className="w-8 h-8 text-purple-500" />;
-        default: return <FileText className="w-8 h-8 text-blue-500" />;
+        case 'mov': return <Video className="w-full h-full p-4 text-purple-500" />;
+        case 'png':
+        case 'jpg':
+        case 'jpeg':
+        case 'gif': return <ImageIcon className="w-full h-full p-4 text-blue-500" />;
+        default: return <FileText className="w-full h-full p-4 text-gray-500" />;
     }
 };
 
@@ -105,10 +114,6 @@ const Toolbar = ({
 
   const handleVariableInsert = (variable: string) => {
     editor.chain().focus().insertContent(`{{${variable}}}`).run();
-  };
-
-  const handleMediaSelect = (type: 'image' | 'video' | 'audio' | 'document') => {
-    onAddMedia?.(type);
   };
 
   return (
@@ -230,11 +235,6 @@ const Toolbar = ({
       >
         <LinkIcon className="h-4 w-4" />
       </Button>
-       {onAddMedia && (
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Attach File" onClick={() => handleMediaSelect('image')}>
-            <Paperclip className="h-4 w-4" />
-          </Button>
-      )}
        <Button
         type="button"
         variant="ghost"
@@ -261,13 +261,16 @@ const Toolbar = ({
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef, attachments = [], onDeleteAttachment, onEditAttachment }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({}),
       Underline,
       TextStyle,
       Color,
+      Placeholder.configure({
+        placeholder: placeholder || 'Type your message…',
+      }),
       CharacterCount.configure({
         limit: 1000,
       }),
@@ -279,7 +282,6 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         autolink: true,
       }),
       Image.configure({
-        inline: false, 
         allowBase64: true,
       }).extend({
         addAttributes() {
@@ -330,12 +332,14 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     },
     editorProps: {
       attributes: {
-        class:
-          'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]',
+        class: cn('prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]', panelStyles.editorArea),
       },
     },
-    immediatelyRender: false,
   });
+
+  const visibleAttachments = attachments.slice(0, 4);
+  const remainingCount = attachments.length - visibleAttachments.length;
+
 
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background" contentEditable={false}>
@@ -344,8 +348,34 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         variables={variables}
         onAddMedia={onAddMedia}
       />
-      <div className="flex-grow overflow-y-auto">
-        <EditorContent editor={editor} placeholder={placeholder} />
+      <div className="flex-grow overflow-y-auto p-3">
+        <EditorContent editor={editor} />
+        {attachments.length > 0 && (
+             <div className={cn(panelStyles.attachmentGrid, 'mt-4')}>
+                {visibleAttachments.map((part, index) => {
+                    if (remainingCount > 0 && index === 3) {
+                        return (
+                             <div key="more" className={panelStyles.attachmentCard} onClick={() => onEditAttachment?.(part.id)}>
+                                {part.type === 'image' && part.url ? <ImageComponent src={part.url} alt={part.name || 'Attachment'} fill className={panelStyles.attachmentImage} /> : <div className={panelStyles.attachmentIcon}>{getFileIcon(part.name || part.type)}</div> }
+                                <div className={panelStyles.attachmentOverlay}>+{remainingCount + 1}</div>
+                            </div>
+                        )
+                    }
+                    return (
+                        <div key={part.id} className={panelStyles.attachmentCard}>
+                            {part.type === 'image' && part.url ? <ImageComponent src={part.url} alt={part.name || 'Attachment'} fill className={panelStyles.attachmentImage} /> : <div className={panelStyles.attachmentIcon}>{getFileIcon(part.name || part.type)}</div> }
+                            <div className={panelStyles.attachmentLabel}>
+                                <span className='truncate'>{part.name}</span>
+                            </div>
+                            <button onClick={(e) => onDeleteAttachment?.(e, part.id) } className={panelStyles.attachmentDelete} aria-label="Remove attachment"><XCircle size={18} /></button>
+                             <div className={panelStyles.attachmentCardHover}>
+                                <Button size="sm" variant="secondary" onClick={() => onEditAttachment?.(part.id)}>Edit</Button>
+                            </div>
+                        </div>
+                    )
+                })}
+             </div>
+        )}
       </div>
       <div className="text-right text-xs text-muted-foreground pr-2 pb-1">
         {editor?.storage.characterCount.characters() || 0} / 1000

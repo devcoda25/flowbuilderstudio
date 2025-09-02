@@ -1,12 +1,13 @@
 
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { Handle, Position, Node as ReactFlowNode, useReactFlow } from 'reactflow';
 import styles from '../canvas-layout.module.css';
+import panelStyles from '@/components/PropertiesPanel/properties-panel.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, Paperclip, FileText, Send } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, Paperclip, FileText, Send, Image as ImageIcon, Video, AudioLines } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,6 @@ import { useFlowStore } from '@/store/flow';
 import { Badge } from '@/components/ui/badge';
 import { nanoid } from 'nanoid';
 import dynamic from 'next/dynamic';
-import { useClickAway } from 'react-use';
 import { cn } from '@/lib/utils';
 import { MediaPart } from '@/types/MediaPart';
 import Image from 'next/image';
@@ -91,6 +91,7 @@ export type BaseNodeData = {
   onOpenProperties?: (node: ReactFlowNode) => void;
   onNodeDoubleClick?: (node: ReactFlowNode, options?: { partId?: string; type?: string }) => void;
   onOpenAttachmentModal?: (nodeId: string, partId: string, type: MediaPart['type']) => void;
+  onOpenImageEditor?: (nodeId: string, partId: string) => void;
 };
 
 
@@ -98,14 +99,20 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   const { deleteNode, duplicateNode, setStartNode, startNodeId, updateNodeData, nodes } = useFlowStore();
   const { getNode } = useReactFlow();
   const [isEditing, setIsEditing] = useState(false);
-  const nodeRef = useRef<HTMLDivElement>(null);
-  const isOpeningModal = useRef(false);
+  const [tempContent, setTempContent] = useState('');
   
   const migratedData = useMemo(() => migrateData(data), [data]);
   const parts = migratedData.parts || [];
   const textPart = useMemo(() => parts.find(p => p.type === 'text') as ContentPart & { type: 'text' } || { id: nanoid(), type: 'text', content: '' }, [parts]);
   const mediaParts = useMemo(() => parts.filter(isMediaPart), [parts]);
+  const prevSelected = useRef(selected);
 
+  const handleDeleteAttachment = useCallback((event: React.MouseEvent, partIdToDelete: string) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const newParts = parts.filter(p => p.id !== partIdToDelete);
+    updateNodeData(id, { parts: newParts });
+  }, [id, parts, updateNodeData]);
 
   const customStyle = {
     '--node-color': data.color || 'hsl(var(--primary))',
@@ -129,32 +136,37 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const thisNode = nodes.find((n) => n.id === id);
 
-  const handleDoubleClick = (partId?: string, type?: string) => {
+  const handleDoubleClick = useCallback(() => {
     if (!thisNode) return;
     if (isMessageNode) {
+      setTempContent(textPart.content);
       setIsEditing(true);
       return;
     }
-    data.onNodeDoubleClick?.(thisNode as ReactFlowNode, { partId, type });
-  };
-  
-  const handleClick = () => {
-    if(isMessageNode) setIsEditing(true);
+    data.onNodeDoubleClick?.(thisNode as ReactFlowNode);
+  }, [thisNode, isMessageNode, textPart.content, data.onNodeDoubleClick]);
+
+  const handleContentChange = (newContent: string) => {
+    setTempContent(newContent);
   }
 
-  useClickAway(nodeRef, (event) => {
-    const target = event.target as HTMLElement;
-    // Check if the click was on the delete button or its children
-    if (target.closest(`.${styles.deletePartButton}`)) {
-      return;
-    }
-    if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]') || isOpeningModal.current) {
-        return;
-    }
-    if (isMessageNode && isEditing) {
+  const handleSave = useCallback(() => {
+      const otherParts = parts.filter(p => p.type !== 'text');
+      const newParts = [{ ...textPart, content: tempContent }, ...otherParts];
+      updateNodeData(id, { parts: newParts });
       setIsEditing(false);
+  }, [id, parts, tempContent, textPart, updateNodeData]);
+  
+  const handleCancel = () => {
+      setIsEditing(false);
+  };
+
+  useEffect(() => {
+    if (prevSelected.current && !selected && isMessageNode && isEditing) {
+      handleSave();
     }
-  });
+    prevSelected.current = selected;
+  }, [selected, isMessageNode, isEditing, handleSave]);
 
 
   const updateButtonLabel = (buttonId: string, newLabel: string) => {
@@ -162,100 +174,74 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     updateNodeData(id, { quickReplies: newReplies });
   };
 
-  const handleContentChange = (content: string) => {
-    const otherParts = parts.filter(p => p.type !== 'text');
-    const newParts = [{ ...textPart, content }, ...otherParts];
-    updateNodeData(id, { parts: newParts });
-  };
-
-  const handleDeleteAttachment = useCallback((partIdToDelete: string, event?: React.MouseEvent) => {
-      event?.stopPropagation();
-      event?.preventDefault();
-      const newParts = parts.filter(p => p.id !== partIdToDelete);
-      updateNodeData(id, { parts: newParts });
-  }, [id, parts, updateNodeData]);
-
   const handleAddMedia = (type: MediaPart['type']) => {
-    isOpeningModal.current = true;
-    data.onOpenAttachmentModal?.(id, nanoid(), type);
-    setTimeout(() => { isOpeningModal.current = false; }, 100);
+    const newPartId = nanoid();
+    data.onOpenAttachmentModal?.(id, newPartId, type);
   };
-
-  const handleOpenAttachment = (partId: string, type: ContentPart['type']) => {
-    if (isMediaPart({ id: partId, type } as ContentPart)) {
-      isOpeningModal.current = true;
-      data.onOpenAttachmentModal?.(id, partId, type as MediaPart['type']);
-      setTimeout(() => { isOpeningModal.current = false; }, 100);
+  
+  const handleEditAttachment = (partId: string) => {
+    const part = mediaParts.find(p => p.id === partId);
+    if(part) {
+        if (part.type === 'image') {
+          data.onOpenImageEditor?.(id, partId);
+        } else {
+          data.onOpenAttachmentModal?.(id, partId, part.type);
+        }
     }
   };
 
-  const AttachmentList = () => {
-    const visibleParts = mediaParts.slice(0, 4);
-    const hasMore = mediaParts.length > 4;
-    const remainingCount = mediaParts.length - 3;
-  
-    return (
-      <div className={cn(styles.mediaGrid)}>
-        {visibleParts.map((part, index) => {
-          if (hasMore && index === 3) {
-            return (
-              <div key="more" className={styles.attachmentTile} onClick={() => handleOpenAttachment(part.id, part.type)}>
-                {part.type === 'image' && part.url ? (
-                  <Image src={part.url} alt={part.name || 'Attachment'} fill className={styles.attachmentTileImage} />
-                ) : (
-                  <div className={styles.attachmentTileIcon}>{getFileIcon(part.name)}</div>
-                )}
-                <div className={styles.mediaGridMore}>+{remainingCount}</div>
-              </div>
-            );
-          }
-  
-          return (
-            <div key={part.id} className={styles.attachmentTile} onClick={() => handleOpenAttachment(part.id, part.type)}>
-              {part.type === 'image' && part.url ? (
-                <Image src={part.url} alt={part.name || 'Attachment'} fill className={styles.attachmentTileImage} />
-              ) : (
-                <div className={styles.attachmentTileIcon}>{getFileIcon(part.name)}</div>
-              )}
-               <div className={styles.attachmentTileLabel}>{part.name}</div>
-              <button onClick={(e) => handleDeleteAttachment(part.id, e)} className={styles.deletePartButton} aria-label={`Remove attachment`}>
-                <XCircle size={18} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   const messageBody = (
-    <div className={styles.messageNodeBody} onClick={handleClick}>
+    <div className={styles.messageNodeBody}>
        {isEditing ? (
-         <>
-           <RichTextEditor
-             value={textPart.content}
-             onChange={handleContentChange}
-             variables={['name', 'email', 'order_id']}
-             onAddMedia={handleAddMedia}
-           />
-         </>
-       ) : (
-         <div
-           className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full px-3 py-2"
-           dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
+         <RichTextEditor
+           key={id + (isEditing ? '-editing' : '-viewing')}
+           value={tempContent}
+           onChange={handleContentChange}
+           variables={['name', 'email', 'order_id']}
+           onAddMedia={handleAddMedia}
+           attachments={mediaParts}
+           onDeleteAttachment={handleDeleteAttachment}
+           onEditAttachment={handleEditAttachment}
          />
-       )}
-       {mediaParts.length > 0 && (
-        <div className="p-2">
-            <AttachmentList />
-        </div>
+       ) : (
+        <>
+            <div
+                className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full px-3 py-2 cursor-text"
+                onDoubleClick={handleDoubleClick}
+                dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
+            />
+            {mediaParts.length > 0 && (
+                <div className={cn(styles.messagePart, 'p-3')}>
+                    <div className={cn(panelStyles.attachmentGrid)}>
+                        {mediaParts.slice(0, 4).map((part, index) => {
+                             if (mediaParts.length > 4 && index === 3) {
+                                 return (
+                                     <div key="more" className={panelStyles.attachmentCard} onClick={() => handleEditAttachment(part.id)}>
+                                         {part.type === 'image' && part.url ? <Image src={part.url} alt={part.name || 'Attachment'} fill className={panelStyles.attachmentImage} /> : <div className={panelStyles.attachmentIcon}>{getFileIcon(part.name)}</div> }
+                                         <div className={panelStyles.attachmentOverlay}>+{mediaParts.length - 3}</div>
+                                     </div>
+                                 )
+                             }
+                             return (
+                                <div key={part.id} className={panelStyles.attachmentCard} onClick={() => handleEditAttachment(part.id)}>
+                                    {part.type === 'image' && part.url ? <Image src={part.url} alt={part.name || 'Attachment'} fill className={panelStyles.attachmentImage} /> : <div className={panelStyles.attachmentIcon}>{getFileIcon(part.name)}</div> }
+                                    <div className={panelStyles.attachmentLabel}>{part.name}</div>
+                                     <button onClick={(e) => handleDeleteAttachment(e, part.id) } className={panelStyles.attachmentDelete} aria-label="Remove attachment"><XCircle size={18} /></button>
+                                </div>
+                             )
+                        })}
+                    </div>
+                </div>
+            )}
+        </>
        )}
     </div>
   );
 
   const buttonsBody = (
-    <div className={styles.buttonsNodeBody} onDoubleClick={() => handleDoubleClick()}>
-      <div className={styles.buttonsQuestion} onClick={() => handleDoubleClick()}>
+    <div className={styles.buttonsNodeBody} onDoubleClick={handleDoubleClick}>
+      <div className={styles.buttonsQuestion} onClick={handleDoubleClick}>
         {data.content || 'Ask a question here'}
       </div>
       <div className={styles.buttonsList}>
@@ -270,7 +256,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
   );
 
   const listBody = (
-    <div className={listNodeStyles.body} onDoubleClick={() => handleDoubleClick()}>
+    <div className={listNodeStyles.body} onDoubleClick={handleDoubleClick}>
       <div className={listNodeStyles.bodyInput}>
         {data.list?.content || 'default body'}
       </div>
@@ -299,13 +285,12 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   return (
     <div
-      ref={nodeRef}
       className={cn(styles.baseNode, isMessageNode && styles.messageNode)}
       style={customStyle}
       aria-selected={selected}
     >
       <NodeAvatars nodeId={id} />
-      <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
+      <div className={styles.nodeHeader} onDoubleClick={handleDoubleClick}>
         <div className={styles.headerLeft}>
           <Icon className={styles.nodeIcon} aria-hidden="true" size={16} />
           <span className={styles.nodeTitle} title={data.label}>
@@ -354,9 +339,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         {isMessageNode ? (
           messageBody
         ) : isAskQuestionNode ? (
-          <p onDoubleClick={() => handleDoubleClick()}>{data.content || ''}</p>
+          <p onDoubleClick={handleDoubleClick}>{data.content || ''}</p>
         ) : isConditionNode ? (
-          <div className={styles.conditionBody} onDoubleClick={() => handleDoubleClick()}>
+          <div className={styles.conditionBody} onDoubleClick={handleDoubleClick}>
             {hasConditions ? (
               <>
                 {data.groups?.map((group, groupIndex) => (
@@ -383,9 +368,31 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         ) : isListNode ? (
           listBody
         ) : (
-          <p onDoubleClick={() => handleDoubleClick()}>{data.description || 'Double-click to configure.'}</p>
+          <p onDoubleClick={handleDoubleClick}>{data.description || 'Double-click to configure.'}</p>
         )}
       </div>
+
+       {isMessageNode && isEditing && (
+        <div className={panelStyles.editorFooter}>
+            <div className={panelStyles.footerActions}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm"><Paperclip className="mr-2 h-4 w-4" />Attach</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleAddMedia('image')}><ImageIcon className="mr-2 h-4 w-4" />Image</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddMedia('video')}><Video className="mr-2 h-4 w-4" />Video</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddMedia('audio')}><AudioLines className="mr-2 h-4 w-4" />Audio</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAddMedia('document')}><FileText className="mr-2 h-4 w-4" />Document</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+             <div className={panelStyles.footerActions}>
+                <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
+                <Button size="sm" onClick={handleSave}>Save</Button>
+            </div>
+        </div>
+      )}
 
       <Handle type="target" position={Position.Left} className={styles.handle} />
 

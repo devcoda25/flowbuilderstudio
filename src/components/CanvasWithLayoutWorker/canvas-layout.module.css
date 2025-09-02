@@ -281,7 +281,7 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: hsl(var(--card));
+  background: hsl(var(--card) / 0.8);
   border: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
   border-radius: 999px;
@@ -294,6 +294,7 @@
   opacity: 0;
   z-index: 10;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  backdrop-filter: blur(2px);
 }
 
 .attachmentTile:hover .deletePartButton {

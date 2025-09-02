@@ -55,6 +55,7 @@ export type CanvasWithLayoutWorkerProps = {
   onNodeDoubleClick?: (node: Node, options?: { partId?: string, type?: string }) => void;
   onOpenProperties?: (node: Node | null) => void;
   onOpenAttachmentModal?: (nodeId: string, partId: string, type: 'image' | 'video' | 'audio' | 'document') => void;
+  onOpenImageEditor?: (nodeId: string, partId: string) => void;
   viewportKey?: string;
 };
 
@@ -77,7 +78,8 @@ export default function CanvasWithLayoutWorker({
   onConnectEnd,
   onNodeDoubleClick,
   onOpenProperties,
-  onOpenAttachmentModal
+  onOpenAttachmentModal,
+  onOpenImageEditor,
 }: CanvasWithLayoutWorkerProps) {
   const rfRef = useRef<import('reactflow').ReactFlowInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -223,8 +225,9 @@ export default function CanvasWithLayoutWorker({
       onOpenProperties: onOpenProperties,
       onNodeDoubleClick: onNodeDoubleClick,
       onOpenAttachmentModal: onOpenAttachmentModal,
+      onOpenImageEditor: onOpenImageEditor,
     }
-  })), [nodes, onOpenProperties, onNodeDoubleClick, onOpenAttachmentModal]);
+  })), [nodes, onOpenProperties, onNodeDoubleClick, onOpenAttachmentModal, onOpenImageEditor]);
 
   return (
     <div ref={canvasRef} className={styles.root}>
