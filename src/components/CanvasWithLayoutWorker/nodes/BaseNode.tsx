@@ -6,7 +6,7 @@ import { Handle, Position, Node as ReactFlowNode, useReactFlow } from 'reactflow
 import styles from '../canvas-layout.module.css';
 import listNodeStyles from './list-node.module.css';
 import NodeAvatars from '@/components/Presence/NodeAvatars';
-import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, Paperclip, FileText } from 'lucide-react';
+import { MoreHorizontal, Trash2, Copy, PlayCircle, XCircle, Settings, File as FileIcon, Film, Music, FileQuestion, FileSpreadsheet, FileJson, Paperclip, FileText, Send } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -111,7 +111,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     '--node-color': data.color || 'hsl(var(--primary))',
   } as React.CSSProperties;
 
-  const Icon = data.icon ? (LucideIcons as any)[data.icon] ?? LucideIcons.HelpCircle : LucideIcons.MessageSquare;
+  const Icon = data.icon ? (LucideIcons as any)[data.icon] ?? LucideIcons.MessageSquare : Send;
 
   const isMessageNode = data.type === 'messaging' && data.label === 'Send a Message';
   const isAskQuestionNode = data.label === 'Question';
@@ -144,9 +144,11 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   useClickAway(nodeRef, (event) => {
     const target = event.target as HTMLElement;
-    
-    // Do not close if clicking on a modal, popper, or the delete button itself
-    if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]') || target.closest(`.${styles.deletePartButton}`) || isOpeningModal.current) {
+    // Check if the click was on the delete button or its children
+    if (target.closest(`.${styles.deletePartButton}`)) {
+      return;
+    }
+    if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]') || isOpeningModal.current) {
         return;
     }
     if (isMessageNode && isEditing) {
@@ -166,7 +168,9 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     updateNodeData(id, { parts: newParts });
   };
 
-  const handleDeletePart = useCallback((partIdToDelete: string) => {
+  const handleDeleteAttachment = useCallback((partIdToDelete: string, event?: React.MouseEvent) => {
+      event?.stopPropagation();
+      event?.preventDefault();
       const newParts = parts.filter(p => p.id !== partIdToDelete);
       updateNodeData(id, { parts: newParts });
   }, [id, parts, updateNodeData]);
@@ -185,30 +189,44 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
     }
   };
 
-  const AttachmentList = ({ isEditor = false }: { isEditor?: boolean }) => (
-    <div className={cn(styles.attachmentList, isEditor && styles.attachmentListEditor, !isEditor && mediaParts.length > 0 && styles.attachmentListCollapsed)}>
-      {mediaParts.map(part => (
-        <div key={part.id} className={styles.attachmentItem} onClick={(e) => { e.stopPropagation(); if (!isEditor) handleOpenAttachment(part.id, part.type)}}>
-          {part.type === 'image' && part.url ? (
-            <Image src={part.url} alt={part.name || 'Attachment'} width={64} height={64} className={styles.attachmentThumbnail} />
-          ) : (
-            <div className={styles.attachmentIconWrapper}>{getFileIcon(part.name)}</div>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeletePart(part.id);
-            }}
-            className={styles.deletePartButton}
-            aria-label={`Remove attachment`}
-          >
-            <XCircle size={18} />
-          </button>
-           <span className="sr-only">{part.name || 'Attachment'}</span>
-        </div>
-      ))}
-    </div>
-  );
+  const AttachmentList = () => {
+    const visibleParts = mediaParts.slice(0, 4);
+    const hasMore = mediaParts.length > 4;
+    const remainingCount = mediaParts.length - 3;
+  
+    return (
+      <div className={cn(styles.mediaGrid)}>
+        {visibleParts.map((part, index) => {
+          if (hasMore && index === 3) {
+            return (
+              <div key="more" className={styles.attachmentTile} onClick={() => handleOpenAttachment(part.id, part.type)}>
+                {part.type === 'image' && part.url ? (
+                  <Image src={part.url} alt={part.name || 'Attachment'} fill className={styles.attachmentTileImage} />
+                ) : (
+                  <div className={styles.attachmentTileIcon}>{getFileIcon(part.name)}</div>
+                )}
+                <div className={styles.mediaGridMore}>+{remainingCount}</div>
+              </div>
+            );
+          }
+  
+          return (
+            <div key={part.id} className={styles.attachmentTile} onClick={() => handleOpenAttachment(part.id, part.type)}>
+              {part.type === 'image' && part.url ? (
+                <Image src={part.url} alt={part.name || 'Attachment'} fill className={styles.attachmentTileImage} />
+              ) : (
+                <div className={styles.attachmentTileIcon}>{getFileIcon(part.name)}</div>
+              )}
+               <div className={styles.attachmentTileLabel}>{part.name}</div>
+              <button onClick={(e) => handleDeleteAttachment(part.id, e)} className={styles.deletePartButton} aria-label={`Remove attachment`}>
+                <XCircle size={18} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const messageBody = (
     <div className={styles.messageNodeBody} onClick={handleClick}>
@@ -219,22 +237,18 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
              onChange={handleContentChange}
              variables={['name', 'email', 'order_id']}
              onAddMedia={handleAddMedia}
-             attachments={mediaParts}
-             onDeleteAttachment={handleDeletePart}
            />
          </>
        ) : (
-         <div className="relative p-3 space-y-2">
-           <div
-             className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full"
-             dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
-           />
-            {mediaParts.length > 0 && !isEditing && (
-              <div className={styles.attachmentContainerCollapsed}>
-                <AttachmentList />
-              </div>
-            )}
-         </div>
+         <div
+           className="prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full px-3 py-2"
+           dangerouslySetInnerHTML={{ __html: textPart.content || '<p class="text-muted-foreground">Click to edit message...</p>' }}
+         />
+       )}
+       {mediaParts.length > 0 && (
+        <div className="p-2">
+            <AttachmentList />
+        </div>
        )}
     </div>
   );
@@ -293,9 +307,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
       <NodeAvatars nodeId={id} />
       <div className={styles.nodeHeader} onDoubleClick={() => handleDoubleClick()}>
         <div className={styles.headerLeft}>
-          <span className={styles.nodeIconWrapper}>
-            <Icon className={styles.nodeIcon} aria-hidden="true" />
-          </span>
+          <Icon className={styles.nodeIcon} aria-hidden="true" size={16} />
           <span className={styles.nodeTitle} title={data.label}>
             {data.label}
           </span>

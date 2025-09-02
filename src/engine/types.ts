@@ -1,4 +1,3 @@
-
 import type { FlowEngine } from "@/engine/FlowEngine";
 
 export type Channel =
@@ -7,7 +6,7 @@ export type Channel =
 
 export type QuickReply = { id: string; label: string };
 export type UrlCTA = { id: string; label: string; url: string };
-export type PhoneCTA = { id: string; label: string; phone: string };
+export type PhoneCTA = { id:string; label: string; phone: string };
 export type PromoCTA = { id: string; label: string; code: string };
 
 export type Attachment = { id: string; type: 'image' | 'video' | 'audio' | 'document'; name?: string; url: string };
@@ -45,12 +44,6 @@ export type BotMessage = {
     attachments?: Attachment[];
 }
 
-export type EngineOptions = {
-  channel?: Channel;
-  clock?: 'real' | 'mock';
-  initialVars?: Record<string, any>;
-};
-
 export type TestConsoleProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -61,6 +54,11 @@ export type TestConsoleProps = {
   className?: string;
 };
 
+export type EngineOptions = {
+  channel?: Channel;
+  clock?: 'real' | 'mock';
+  initialVars?: Record<string, any>;
+};
 
 export type EngineEventMap = {
   status: EngineStatus;

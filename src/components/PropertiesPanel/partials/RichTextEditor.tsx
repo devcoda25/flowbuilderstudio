@@ -14,6 +14,7 @@ import TableRow from '@tiptap/extension-table-row';
 import Image from '@tiptap/extension-image';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import CharacterCount from '@tiptap/extension-character-count';
 import {
   Bold,
   Italic,
@@ -54,7 +55,7 @@ import {
 import VariableChipAutocomplete from '@/components/VariableChipAutocomplete/VariableChipAutocomplete';
 import type { MediaPart } from '@/types/MediaPart';
 import ImageComponent from 'next/image';
-import styles from '@/components/CanvasWithLayoutWorker/canvas-layout.module.css';
+import styles from '../properties-panel.module.css';
 
 export type RichTextEditorProps = {
   value: string;
@@ -62,8 +63,6 @@ export type RichTextEditorProps = {
   placeholder?: string;
   variables?: string[];
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
-  attachments?: MediaPart[];
-  onDeleteAttachment?: (id: string) => void;
   modalRef?: React.RefObject<HTMLDivElement | null>;
 };
 
@@ -114,30 +113,7 @@ const Toolbar = ({
 
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-input p-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        className="h-8 w-8"
-        title="Undo"
-      >
-        <Undo className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        className="h-8 w-8"
-        title="Redo"
-      >
-        <Redo className="h-4 w-4" />
-      </Button>
-      <Separator orientation="vertical" className="h-6 mx-1" />
-      <DropdownMenu>
+       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="ghost" className="h-8 w-auto px-2 text-sm">
             {editor.isActive('heading', { level: 1 }) ? (
@@ -219,53 +195,6 @@ const Toolbar = ({
       >
         <Strikethrough className="h-4 w-4" />
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => (document.querySelector('input[type=color][data-id=color-picker]') as HTMLInputElement)?.click()}
-        title="Text Color"
-      >
-        <Palette className="h-4 w-4" />
-        <input
-          type="color"
-          data-id="color-picker"
-          className="sr-only"
-          onInput={(e) => editor.chain().focus().setColor(e.currentTarget.value).run()}
-          value={editor.getAttributes('textStyle').color || '#000000'}
-        />
-      </Button>
-      <Separator orientation="vertical" className="h-6 mx-1" />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => editor.chain().focus().setTextAlign('left').run()}
-        className={cn('h-8 w-8', editor.isActive({ textAlign: 'left' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Align Left"
-      >
-        <AlignLeft className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => editor.chain().focus().setTextAlign('center').run()}
-        className={cn('h-8 w-8', editor.isActive({ textAlign: 'center' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Align Center"
-      >
-        <AlignCenter className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => editor.chain().focus().setTextAlign('right').run()}
-        className={cn('h-8 w-8', editor.isActive({ textAlign: 'right' }) ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Align Right"
-      >
-        <AlignRight className="h-4 w-4" />
-      </Button>
       <Separator orientation="vertical" className="h-6 mx-1" />
       <Button
         type="button"
@@ -288,7 +217,10 @@ const Toolbar = ({
         <ListOrdered className="h-4 w-4" />
       </Button>
       <Separator orientation="vertical" className="h-6 mx-1" />
-      <Button
+       {variables && variables.length > 0 && (
+        <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} label="{{}}" />
+      )}
+       <Button
         type="button"
         variant="ghost"
         size="icon"
@@ -298,158 +230,47 @@ const Toolbar = ({
       >
         <LinkIcon className="h-4 w-4" />
       </Button>
+       {onAddMedia && (
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Attach File" onClick={() => handleMediaSelect('image')}>
+            <Paperclip className="h-4 w-4" />
+          </Button>
+      )}
+       <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().undo()}
+        className="h-8 w-8"
+        title="Undo"
+      >
+        <Undo className="h-4 w-4" />
+      </Button>
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        onClick={() => editor.chain().focus().unsetLink().run()}
-        disabled={!editor.isActive('link')}
-        title="Unlink"
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().redo()}
+        className="h-8 w-8"
+        title="Redo"
       >
-        <Unlink className="h-4 w-4" />
+        <Redo className="h-4 w-4" />
       </Button>
-      <Separator orientation="vertical" className="h-6 mx-1" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Table options">
-            <TableIcon className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-          >
-            Insert Table
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => (document.querySelector('input[type=color][data-id=table-cell-color-picker]') as HTMLInputElement)?.click()}
-            disabled={!editor.can().setCellAttribute('backgroundColor', '#ffffff')}
-          >
-            Cell Background Color
-            <input
-              type="color"
-              data-id="table-cell-color-picker"
-              className="sr-only"
-              onInput={(e) => editor.chain().focus().setCellAttribute('backgroundColor', e.currentTarget.value).run()}
-            />
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().addColumnBefore().run()}
-            disabled={!editor.can().addColumnBefore()}
-          >
-            Add Column Before
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-            disabled={!editor.can().addColumnAfter()}
-          >
-            Add Column After
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-            disabled={!editor.can().deleteColumn()}
-          >
-            Delete Column
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().addRowBefore().run()}
-            disabled={!editor.can().addRowBefore()}
-          >
-            Add Row Before
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-            disabled={!editor.can().addRowAfter()}
-          >
-            Add Row After
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().deleteRow().run()}
-            disabled={!editor.can().deleteRow()}
-          >
-            Delete Row
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().mergeOrSplit().run()}
-            disabled={!editor.can().mergeOrSplit()}
-          >
-            Merge/Split Cell
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
-            disabled={!editor.can().toggleHeaderColumn()}
-          >
-            Toggle Header Column
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-            disabled={!editor.can().toggleHeaderRow()}
-          >
-            Toggle Header Row
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().toggleHeaderCell().run()}
-            disabled={!editor.can().toggleHeaderCell()}
-          >
-            Toggle Header Cell
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => editor.chain().focus().deleteTable().run()}
-            disabled={!editor.can().deleteTable()}
-          >
-            Delete Table
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {onAddMedia && (
-        <>
-          <Separator orientation="vertical" className="h-6 mx-1" />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Attach File">
-                <Paperclip className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleMediaSelect('image')}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                <span>Image</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('video')}>
-                <Video className="mr-2 h-4 w-4" />
-                <span>Video</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('audio')}>
-                <AudioLines className="mr-2 h-4 w-4" />
-                <span>Audio</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleMediaSelect('document')}>
-                <FileText className="mr-2 h-4 w-4" />
-                <span>Document</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      )}
-      <Separator orientation="vertical" className="h-6 mx-1" />
-      {variables && variables.length > 0 && (
-        <VariableChipAutocomplete variables={variables} onInsert={handleVariableInsert} label="{{}}" />
-      )}
     </div>
   );
 };
 
-export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, attachments, onDeleteAttachment, modalRef }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({}),
       Underline,
       TextStyle,
       Color,
+      CharacterCount.configure({
+        limit: 1000,
+      }),
       TextAlign.configure({
         types: ['heading', 'paragraph', 'image'],
       }),
@@ -507,34 +328,10 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
-    immediatelyRender: false,
     editorProps: {
       attributes: {
         class:
           'prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]',
-      },
-      handleDOMEvents: {
-        mousedown: (view, event) => {
-          const target = event.target as HTMLElement;
-          if (target.closest(`.${styles.deletePartButton}`)) {
-            return true;
-          }
-          return false;
-        },
-        drop: (view, event) => {
-            const target = event.target as HTMLElement;
-            if (target.closest(`[data-attachment-list-editor]`)) {
-                return true;
-            }
-            return false;
-        },
-        dragstart: (view, event) => {
-            const target = event.target as HTMLElement;
-            if (target.closest(`[data-attachment-list-editor]`)) {
-                return true;
-            }
-            return false;
-        }
       },
     },
   });
@@ -548,31 +345,9 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
       />
       <div className="flex-grow overflow-y-auto">
         <EditorContent editor={editor} placeholder={placeholder} />
-        
-        {attachments && attachments.length > 0 && (
-            <div className={cn(styles.attachmentList, styles.attachmentListEditor)} data-attachment-list-editor contentEditable={false}>
-                {attachments.map(part => (
-                    <div key={part.id} className={styles.attachmentItem}>
-                        {part.type === 'image' && part.url ? (
-                            <ImageComponent src={part.url} alt={part.name || 'Attachment'} width={64} height={64} className={styles.attachmentThumbnail} />
-                        ) : (
-                            <div className={styles.attachmentIconWrapper}>{getFileIcon(part.name)}</div>
-                        )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteAttachment?.(part.id);
-                            }}
-                            className={styles.deletePartButton}
-                            aria-label={`Remove attachment`}
-                        >
-                            <XCircle size={18} />
-                        </button>
-                        <span className="sr-only">{part.name || 'Attachment'}</span>
-                    </div>
-                ))}
-            </div>
-        )}
+      </div>
+      <div className="text-right text-xs text-muted-foreground pr-2 pb-1">
+        {editor?.storage.characterCount.characters() || 0} / 1000
       </div>
     </div>
   );

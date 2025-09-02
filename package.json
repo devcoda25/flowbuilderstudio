@@ -36,6 +36,7 @@
     "@radix-ui/react-switch": "^1.0.3",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@tiptap/extension-character-count": "^3.3.0",
     "@tiptap/extension-color": "^3.2.1",
     "@tiptap/extension-image": "^3.2.0",
     "@tiptap/extension-placeholder": "^3.3.0",
