@@ -43,15 +43,17 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
   const node = getNode(nodeId);
 
   const methods = useForm<FormValues>({
-    defaultValues: React.useMemo(() => ({
-      content: '',
-      answerVariants: [],
-      acceptMedia: false,
-      variableName: '@value',
-      advancedOptions: false,
-      parts: [], // Initialize parts
-      ...node?.data,
-    }), [node?.data]),
+    defaultValues: React.useMemo(() => {
+        const data = node?.data || {};
+        return {
+            content: data.content || '',
+            answerVariants: data.answerVariants || [],
+            acceptMedia: data.acceptMedia || false,
+            variableName: data.variableName || '@value',
+            advancedOptions: data.advancedOptions || false,
+            parts: data.parts || [],
+        }
+    }, [node?.data]),
   });
 
   const { control, handleSubmit, register, reset, setValue, getValues } = methods;
@@ -71,15 +73,15 @@ export default function QuestionModal({ isOpen, onClose, nodeId }: QuestionModal
 
   React.useEffect(() => {
     if (isOpen && node) {
-      reset({
-        content: '',
-        answerVariants: [],
-        acceptMedia: false,
-        variableName: '@value',
-        advancedOptions: false,
-        parts: [],
-        ...node.data,
-      });
+        const data = node.data || {};
+        reset({
+            content: data.content || '',
+            answerVariants: data.answerVariants || [],
+            acceptMedia: data.acceptMedia || false,
+            variableName: data.variableName || '@value',
+            advancedOptions: data.advancedOptions || false,
+            parts: data.parts || [],
+        });
     }
   }, [node, isOpen, reset]);
 

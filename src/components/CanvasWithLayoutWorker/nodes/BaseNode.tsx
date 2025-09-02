@@ -241,9 +241,11 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const buttonsBody = (
     <div className={styles.buttonsNodeBody} onDoubleClick={handleDoubleClick}>
-      <div className={styles.buttonsQuestion} onClick={handleDoubleClick}>
-        {data.content || 'Ask a question here'}
-      </div>
+      <div 
+        className={styles.buttonsQuestion} 
+        onClick={handleDoubleClick}
+        dangerouslySetInnerHTML={{ __html: data.content || 'Ask a question here' }}
+      />
       <div className={styles.buttonsList}>
         {(data.quickReplies || []).map((branch: QuickReply, index: number) => (
           <div key={branch.id} className={styles.buttonItem}>
@@ -257,9 +259,10 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
 
   const listBody = (
     <div className={listNodeStyles.body} onDoubleClick={handleDoubleClick}>
-      <div className={listNodeStyles.bodyInput}>
-        {data.list?.content || 'default body'}
-      </div>
+      <div 
+        className={listNodeStyles.bodyInput}
+        dangerouslySetInnerHTML={{ __html: data.list?.content || 'default body' }}
+      />
       <div className={`${listNodeStyles.sections} nodrag`}>
         {(data.list?.sections || []).map((section) => (
           <div key={section.id} className={listNodeStyles.section}>
@@ -339,7 +342,7 @@ export default function BaseNode({ id, data, selected }: { id: string; data: Bas
         {isMessageNode ? (
           messageBody
         ) : isAskQuestionNode ? (
-          <p onDoubleClick={handleDoubleClick}>{data.content || ''}</p>
+          <div onDoubleClick={handleDoubleClick} dangerouslySetInnerHTML={{ __html: data.content || '' }} />
         ) : isConditionNode ? (
           <div className={styles.conditionBody} onDoubleClick={handleDoubleClick}>
             {hasConditions ? (

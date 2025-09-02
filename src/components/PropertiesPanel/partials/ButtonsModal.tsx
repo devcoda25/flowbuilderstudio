@@ -51,12 +51,18 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
 
   const methods = useForm<FormValues>({
     defaultValues: React.useMemo(
-      () => ({
-        content: 'Ask a question here',
-        quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-        parts: [],
-        ...node?.data,
-      }),
+      () => {
+        const data = node?.data || {};
+        return {
+          content: data.content || 'Ask a question here',
+          quickReplies: data.quickReplies && data.quickReplies.length > 0 ? data.quickReplies : [{ id: nanoid(), label: 'Answer 1' }],
+          parts: data.parts || [],
+          headerText: data.headerText || '',
+          footerText: data.footerText || '',
+          variableName: data.variableName || '@value',
+          mediaHeader: data.mediaHeader || false,
+        };
+      },
       [node?.data]
     ),
   });
@@ -77,11 +83,15 @@ export default function ButtonsModal({ isOpen, onClose, nodeId }: ButtonsModalPr
 
   React.useEffect(() => {
     if (isOpen && node) {
-      reset({
-        content: 'Ask a question here',
-        quickReplies: [{ id: nanoid(), label: 'Answer 1' }],
-        parts: [],
-        ...node.data,
+       const data = node.data || {};
+       reset({
+        content: data.content || 'Ask a question here',
+        quickReplies: data.quickReplies && data.quickReplies.length > 0 ? data.quickReplies : [{ id: nanoid(), label: 'Answer 1' }],
+        parts: data.parts || [],
+        headerText: data.headerText || '',
+        footerText: data.footerText || '',
+        variableName: data.variableName || '@value',
+        mediaHeader: data.mediaHeader || false,
       });
     }
   }, [node, isOpen, reset]);
