@@ -1,4 +1,5 @@
 
+
 import { EventBus } from './EventBus';
 import { RealClock, MockClock, IClock } from './clock';
 import { evalExpression, parseDelay, renderTemplate } from './evaluator';
@@ -215,7 +216,17 @@ export class FlowEngine {
         return 'sync';
       }
       case 'delay': {
-        const ms = parseDelay(data.delay || data.waitMs);
+        const ms = data.mode === 'delay'
+          ? (data.delayMinutes || 0) * 60000
+          : new Date(data.runAt).getTime() - Date.now();
+
+        if (ms <= 0) {
+            this.trace(n.id, 'delay 0ms');
+            const nx = this.next(n.id);
+            if (nx) this.queue.push(nx);
+            return 'sync';
+        }
+
         const id = this.clock.set(() => {
           this.trace(n.id, `delay ${ms}ms`);
           const nx = this.next(n.id);

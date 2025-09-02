@@ -25,24 +25,25 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
 
 const PropertiesPanel = dynamic(() => import('@/components/PropertiesPanel'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
-const ImageAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageAttachmentModal'), { ssr: false });
-const VideoAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/VideoAttachmentModal'), { ssr: false });
-const DocumentAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/DocumentAttachmentModal'), { ssr: false });
-const AudioAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/AudioAttachmentModal'), { ssr: false });
-const WebhookModal = dynamic(() => import('@/components/PropertiesPanel/partials/WebhookModal'), { ssr: false });
-const ConditionModal = dynamic(() => import('@/components/PropertiesPanel/partials/ConditionModal'), { ssr: false });
-const GoogleSheetsModal = dynamic(() => import('@/components/PropertiesPanel/partials/GoogleSheetsModal'), { ssr: false });
-const AssignUserModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignUserModal'), { ssr: false });
-const AssignTeamModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignTeamModal'), { ssr: false });
-const FlowsModal = dynamic(() => import('@/components/FlowsModal/FlowsModal'), { ssr: false });
-const ListModal = dynamic(() => import('@/components/PropertiesPanel/partials/ListModal'), { ssr: false });
-const ButtonsModal = dynamic(() => import('@/components/PropertiesPanel/partials/ButtonsModal'), { ssr: false });
-const QuestionModal = dynamic(() => import('@/components/PropertiesPanel/partials/QuestionModal'), { ssr: false });
-const ImageEditorModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageEditorModal'), { ssr: false });
+const ImageAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageAttachmentModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const VideoAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/VideoAttachmentModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const DocumentAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/DocumentAttachmentModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const AudioAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/AudioAttachmentModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const WebhookModal = dynamic(() => import('@/components/PropertiesPanel/partials/WebhookModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const ConditionModal = dynamic(() => import('@/components/PropertiesPanel/partials/ConditionModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const GoogleSheetsModal = dynamic(() => import('@/components/PropertiesPanel/partials/GoogleSheetsModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const AssignUserModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignUserModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const AssignTeamModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignTeamModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const FlowsModal = dynamic(() => import('@/components/FlowsModal/FlowsModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const ListModal = dynamic(() => import('@/components/PropertiesPanel/partials/ListModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const ButtonsModal = dynamic(() => import('@/components/PropertiesPanel/partials/ButtonsModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const QuestionModal = dynamic(() => import('@/components/PropertiesPanel/partials/QuestionModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const ImageEditorModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageEditorModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const DelayModal = dynamic(() => import('@/components/PropertiesPanel/partials/DelayModal'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
 
 
 type ModalState = {
-  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'imageEditor';
+  type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'imageEditor' | 'delay';
   nodeId?: string;
   data?: any;
   partId?: string;
@@ -112,6 +113,8 @@ function StudioPageContent() {
       setModalState({ type: 'assignUser', nodeId: node.id, data: node.data });
     } else if (nodeLabel === 'Assign to Team') {
       setModalState({ type: 'assignTeam', nodeId: node.id, data: node.data });
+    } else if (nodeLabel === 'Add a Delay') {
+      setModalState({ type: 'delay', nodeId: node.id, data: node.data });
     }
   }, []);
 
@@ -387,6 +390,14 @@ function StudioPageContent() {
           initialData={modalState?.data}
         />
       )}
+       {modalState?.type === 'delay' && (
+        <DelayModal
+          isOpen={true}
+          onClose={() => setModalState(null)}
+          onSave={onSaveModal}
+          initialData={modalState?.data}
+        />
+      )}
       {modalState?.type === 'googleSheets' && (
         <GoogleSheetsModal
           isOpen={true}
@@ -424,5 +435,3 @@ export default function StudioClientPage() {
     </ReactFlowProvider>
   );
 }
-
-    
