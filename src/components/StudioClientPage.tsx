@@ -5,11 +5,11 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Node } from 'reactflow';
 import { ReactFlowProvider, useReactFlow } from 'reactflow';
 import { nanoid } from 'nanoid';
+import dynamic from 'next/dynamic';
 
 import HeaderBar from '@/components/HeaderBar';
 import SidebarPalette, { PaletteItemPayload } from '@/components/SidebarPalette';
 import CanvasWithLayoutWorker from '@/components/CanvasWithLayoutWorker/CanvasWithLayoutWorker';
-import PropertiesPanel from '@/components/PropertiesPanel';
 import { useFlowStore, useFlowMetaStore, undo, redo } from '@/store/flow';
 import { useFlowsStore } from '@/store/flows';
 import TestConsole from '@/components/TestConsole';
@@ -19,25 +19,27 @@ import { FlowEngine } from '@/engine/FlowEngine';
 import { useHistoryStore } from '@/store/history';
 import { getRandomColor } from '@/lib/color-utils';
 
-import ImageAttachmentModal from '@/components/PropertiesPanel/partials/ImageAttachmentModal';
-import VideoAttachmentModal from '@/components/PropertiesPanel/partials/VideoAttachmentModal';
-import DocumentAttachmentModal from '@/components/PropertiesPanel/partials/DocumentAttachmentModal';
-import AudioAttachmentModal from '@/components/PropertiesPanel/partials/AudioAttachmentModal';
-import WebhookModal from '@/components/PropertiesPanel/partials/WebhookModal';
-import ConditionModal from '@/components/PropertiesPanel/partials/ConditionModal';
-import GoogleSheetsModal from '@/components/PropertiesPanel/partials/GoogleSheetsModal';
-import AssignUserModal from '@/components/PropertiesPanel/partials/AssignUserModal';
-import AssignTeamModal from '@/components/PropertiesPanel/partials/AssignTeamModal';
-import FlowsModal from '@/components/FlowsModal/FlowsModal';
-import ListModal from '@/components/PropertiesPanel/partials/ListModal';
-import ButtonsModal from '@/components/PropertiesPanel/partials/ButtonsModal';
-import QuestionModal from '@/components/PropertiesPanel/partials/QuestionModal';
-import ImageEditorModal from '@/components/PropertiesPanel/partials/ImageEditorModal';
-
-
 import type { ContentPart } from '@/components/CanvasWithLayoutWorker/nodes/BaseNode';
 import { MediaPart } from '@/types/MediaPart';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from './ui/skeleton';
+
+const PropertiesPanel = dynamic(() => import('@/components/PropertiesPanel'), { ssr: false, loading: () => <div className="w-[420px] h-full bg-muted border-l p-4"><Skeleton className="h-full w-full" /></div> });
+const ImageAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageAttachmentModal'), { ssr: false });
+const VideoAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/VideoAttachmentModal'), { ssr: false });
+const DocumentAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/DocumentAttachmentModal'), { ssr: false });
+const AudioAttachmentModal = dynamic(() => import('@/components/PropertiesPanel/partials/AudioAttachmentModal'), { ssr: false });
+const WebhookModal = dynamic(() => import('@/components/PropertiesPanel/partials/WebhookModal'), { ssr: false });
+const ConditionModal = dynamic(() => import('@/components/PropertiesPanel/partials/ConditionModal'), { ssr: false });
+const GoogleSheetsModal = dynamic(() => import('@/components/PropertiesPanel/partials/GoogleSheetsModal'), { ssr: false });
+const AssignUserModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignUserModal'), { ssr: false });
+const AssignTeamModal = dynamic(() => import('@/components/PropertiesPanel/partials/AssignTeamModal'), { ssr: false });
+const FlowsModal = dynamic(() => import('@/components/FlowsModal/FlowsModal'), { ssr: false });
+const ListModal = dynamic(() => import('@/components/PropertiesPanel/partials/ListModal'), { ssr: false });
+const ButtonsModal = dynamic(() => import('@/components/PropertiesPanel/partials/ButtonsModal'), { ssr: false });
+const QuestionModal = dynamic(() => import('@/components/PropertiesPanel/partials/QuestionModal'), { ssr: false });
+const ImageEditorModal = dynamic(() => import('@/components/PropertiesPanel/partials/ImageEditorModal'), { ssr: false });
+
 
 type ModalState = {
   type: 'image' | 'video' | 'document' | 'audio' | 'webhook' | 'condition' | 'googleSheets' | 'assignUser' | 'assignTeam' | 'flows' | 'list' | 'buttons' | 'question' | 'imageEditor';
@@ -422,3 +424,5 @@ export default function StudioClientPage() {
     </ReactFlowProvider>
   );
 }
+
+    
