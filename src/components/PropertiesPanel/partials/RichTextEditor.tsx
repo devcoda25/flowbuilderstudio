@@ -335,6 +335,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
         class: cn('prose dark:prose-invert prose-sm sm:prose-base w-full max-w-full rounded-b-md border-0 bg-transparent px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]', panelStyles.editorArea),
       },
     },
+    immediatelyRender: false,
   });
 
   const visibleAttachments = attachments.slice(0, 4);
