@@ -68,7 +68,7 @@ function StudioPageContent() {
   const { canUndo, canRedo } = useHistoryStore();
 
   const engine = useMemo(() => new FlowEngine({ channel: meta.channels[0], clock: 'real' }), [meta.channels]);
-  const { project } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
   const selectedNode = useMemo(() => nodes.find(n => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
 
@@ -203,7 +203,7 @@ function StudioPageContent() {
   const handleDragStart = (_e: React.DragEvent, item: PaletteItemPayload) => {};
 
   const handleClickAdd = (item: PaletteItemPayload) => {
-    const { x, y } = project({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const { x, y } = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     const newNode: Node = {
       id: nanoid(),
       type: 'base',
