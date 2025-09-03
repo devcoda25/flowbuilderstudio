@@ -9,6 +9,7 @@
 
 
 
+
 .root {
   position: fixed;
   top: 0; right: 0;
@@ -25,6 +26,7 @@
 
 .root :global(.ProseMirror) {
   outline: none;
+  caret-color: currentColor;
 }
 .root :global(.ProseMirror ul),
 .root :global(.ProseMirror ol) {
