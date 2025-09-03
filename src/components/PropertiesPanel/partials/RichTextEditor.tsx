@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useId } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -92,10 +92,12 @@ const Toolbar = ({
   editor,
   variables,
   onAddMedia,
+  id
 }: {
   editor: Editor | null;
   variables?: string[];
   onAddMedia?: (type: 'image' | 'video' | 'audio' | 'document') => void;
+  id: string;
 }) => {
   if (!editor) {
     return null;
@@ -200,6 +202,25 @@ const Toolbar = ({
       >
         <Strikethrough className="h-4 w-4" />
       </Button>
+       <div className="relative">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => (document.getElementById(id) as any)?.click()}
+          className={cn('h-8 w-8', editor.isActive('textStyle') ? 'is-active bg-accent text-accent-foreground' : '')}
+          title="Text Color"
+        >
+          <Palette className="h-4 w-4" />
+        </Button>
+        <input
+          id={id}
+          type="color"
+          onInput={(event: React.ChangeEvent<HTMLInputElement>) => editor.chain().focus().setColor(event.target.value).run()}
+          value={editor.getAttributes('textStyle').color || '#000000'}
+          className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </div>
       <Separator orientation="vertical" className="h-6 mx-1" />
       <Button
         type="button"
@@ -293,14 +314,13 @@ const Toolbar = ({
 };
 
 export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef, attachments = [], onDeleteAttachment, onEditAttachment }: RichTextEditorProps) {
+  const id = useId();
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         strike: {},
       }),
-      Underline.configure({
-        // Add underline keyboard shortcut
-      }),
+      Underline,
       TextStyle,
       Color,
       Placeholder.configure({
@@ -380,6 +400,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
   return (
     <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background">
       <Toolbar
+        id={id}
         editor={editor}
         variables={variables}
         onAddMedia={onAddMedia}
