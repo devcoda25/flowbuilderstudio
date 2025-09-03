@@ -163,7 +163,7 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
         className={cn('h-8 w-8', editor.isActive('bold') ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Bold"
+        title="Bold (Ctrl+B)"
       >
         <Bold className="h-4 w-4" />
       </Button>
@@ -174,7 +174,7 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
         className={cn('h-8 w-8', editor.isActive('italic') ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Italic"
+        title="Italic (Ctrl+I)"
       >
         <Italic className="h-4 w-4" />
       </Button>
@@ -185,7 +185,7 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         disabled={!editor.can().chain().focus().toggleUnderline().run()}
         className={cn('h-8 w-8', editor.isActive('underline') ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Underline"
+        title="Underline (Ctrl+U)"
       >
         <UnderlineIcon className="h-4 w-4" />
       </Button>
@@ -196,9 +196,40 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().toggleStrike().run()}
         disabled={!editor.can().chain().focus().toggleStrike().run()}
         className={cn('h-8 w-8', editor.isActive('strike') ? 'is-active bg-accent text-accent-foreground' : '')}
-        title="Strikethrough"
+        title="Strikethrough (Ctrl+Shift+X)"
       >
         <Strikethrough className="h-4 w-4" />
+      </Button>
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'left' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Left"
+      >
+        <AlignLeft className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'center' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Center"
+      >
+        <AlignCenter className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+        className={cn('h-8 w-8', editor.isActive({ textAlign: 'right' }) ? 'is-active bg-accent text-accent-foreground' : '')}
+        title="Align Right"
+      >
+        <AlignRight className="h-4 w-4" />
       </Button>
       <Separator orientation="vertical" className="h-6 mx-1" />
       <Button
@@ -242,7 +273,7 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         className="h-8 w-8"
-        title="Undo"
+        title="Undo (Ctrl+Z)"
       >
         <Undo className="h-4 w-4" />
       </Button>
@@ -253,7 +284,7 @@ const Toolbar = ({
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         className="h-8 w-8"
-        title="Redo"
+        title="Redo (Ctrl+Y)"
       >
         <Redo className="h-4 w-4" />
       </Button>
@@ -264,8 +295,12 @@ const Toolbar = ({
 export default function RichTextEditor({ value, onChange, placeholder, variables, onAddMedia, modalRef, attachments = [], onDeleteAttachment, onEditAttachment }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({}),
-      Underline,
+      StarterKit.configure({
+        strike: {},
+      }),
+      Underline.configure({
+        // Add underline keyboard shortcut
+      }),
       TextStyle,
       Color,
       Placeholder.configure({
@@ -343,7 +378,7 @@ export default function RichTextEditor({ value, onChange, placeholder, variables
 
 
   return (
-    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background" contentEditable={false}>
+    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring flex flex-col bg-background">
       <Toolbar
         editor={editor}
         variables={variables}
